@@ -32,7 +32,11 @@ public class TransitFinderTest {
         Ephemeris eph = new Ephemeris(new FileInputStream("src/main/assets/ephem_sun_moon.bin"));
         TransitFinder f = new TransitFinder(TLE, eph, 109);
         List<Transit> r = f.search(41.06241, -8.63613, 105, 100, Tle.julianDay(2026, 11, 26), 21, null);
-        assertEquals(4, r.size());
+        // 5 trânsitos: os 4 do transit-finder (linha central no raio) + Lua 06/12,
+        // cuja linha central fica a 102,8 km mas a faixa entra no raio.
+        assertEquals(5, r.size());
+        assertTrue(r.get(1).centerlineDistanceKm > 100 && r.get(1).distanceToBandKm() < 100);
+        r.remove(1);
         // Skyfield (s desde a meia-noite UTC do dia), linha central (km), largura (km)
         double[][] ref = {
                 {Tle.julianDay(2026, 11, 28), 11 * 3600 + 59 * 60 + 59.87, 52.13, 13.09},

@@ -47,7 +47,7 @@ public final class TransitFinder {
         double jdEnd = Math.min(jdStart + days, eph.lastJd());
         jdStart = Math.max(jdStart, eph.firstJd());
         int total = (int) ((jdEnd - jdStart) / SEC);
-        double limit = radiusKm + 30.0;
+        double limit = radiusKm + 45.0; // margem para a meia largura da faixa
 
         for (Ephemeris.Body body : Ephemeris.Body.values()) {
             int bestI = -1;
@@ -84,7 +84,8 @@ public final class TransitFinder {
             if (bestI >= 0) addCandidate(out, body, jdStart + bestI * SEC, lat, lon, hM);
         }
         List<Transit> filtered = new ArrayList<>();
-        for (Transit t : out) if (t.centerlineDistanceKm <= radiusKm) filtered.add(t);
+        // Vale qualquer sítio dentro do raio onde a ISS cruze o disco (não só a linha central).
+        for (Transit t : out) if (t.distanceToBandKm() <= radiusKm) filtered.add(t);
         Collections.sort(filtered, (x, y) -> Double.compare(x.jdObserver, y.jdObserver));
         if (progress != null) progress.onProgress(1.0);
         return filtered;

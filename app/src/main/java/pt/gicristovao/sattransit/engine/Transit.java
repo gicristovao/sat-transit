@@ -43,6 +43,11 @@ public final class Transit {
         return minSeparationArcsec < bodyRadiusArcsec;
     }
 
+    /** Distância do observador ao ponto mais próximo onde o trânsito é visível (0 se já estiver dentro). */
+    public double distanceToBandKm() {
+        return Math.max(0.0, centerlineDistanceKm - bandWidthKm / 2.0);
+    }
+
     public static long jdToMillis(double jd) {
         return Math.round((jd - 2440587.5) * 86400000.0);
     }

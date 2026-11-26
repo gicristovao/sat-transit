@@ -381,7 +381,7 @@ private fun TransitCard(t: Transit, onClick: () -> Unit) {
             Text("${if (sun) "Sol" else "Lua"} · $day", color = C.Text, fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.weight(1f))
             if (visible) {
-                Text("Junto à linha", color = C.Ink, fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
+                Text("Visível daqui", color = C.Ink, fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.clip(RoundedCornerShape(6.dp)).background(C.Amber).padding(horizontal = 8.dp, vertical = 4.dp))
             }
         }
@@ -390,7 +390,8 @@ private fun TransitCard(t: Transit, onClick: () -> Unit) {
             val dur = if (visible) t.durationObserverS else t.durationCenterS
             Meta(String.format(PT, "%.1f s", dur))
             Meta(String.format(PT, "elev. %.0f°", t.altitudeDeg))
-            Meta(String.format(PT, "%.1f km da linha", t.centerlineDistanceKm))
+            if (visible) Meta(String.format(PT, "%.1f km da linha central", t.centerlineDistanceKm))
+            else Meta(String.format(PT, "%.1f km da faixa", t.distanceToBandKm()))
         }
     }
 }
