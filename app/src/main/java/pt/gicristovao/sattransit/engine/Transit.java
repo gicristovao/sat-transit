@@ -45,6 +45,8 @@ public final class Transit {
      * Pontos por ordem do tempo (sentido do movimento).
      */
     public float[] skyTrack;
+    /** Instante de cada ponto de skyTrack, em segundos relativos a jdObserver. */
+    public float[] skyTrackT;
     /** Meia largura (″) da vista que contém o disco e a passagem. */
     public double skyFieldArcsec;
     /** Direção (rad, 0 = direita, π/2 = cima) do lado iluminado da Lua na vista do céu. */

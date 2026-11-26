@@ -227,8 +227,9 @@ public final class TransitFinder {
         double r = t.bodyRadiusArcsec;
         double field = Math.max(1.7 * r, 1.25 * t.minSeparationArcsec + 0.3 * r);
         t.skyFieldArcsec = field;
-        double keep = 1.6 * field;
+        double keep = Math.max(1.6 * field, 4.0 * r);
         java.util.ArrayList<Float> pts = new java.util.ArrayList<>();
+        java.util.ArrayList<Float> ts = new java.util.ArrayList<>();
         for (double dt = -40.0; dt <= 40.0; dt += 0.05) {
             double[] p = altAzPair(t.body, t.jdObserver + dt * SEC, lat, lon, obsE);
             double daz = p[1] - p[3];
@@ -236,10 +237,12 @@ public final class TransitFinder {
             if (daz < -180) daz += 360;
             double dx = daz * Math.cos(Math.toRadians(p[2])) * 3600.0;
             double dy = (p[0] - p[2]) * 3600.0;
-            if (Math.hypot(dx, dy) <= keep) { pts.add((float) dx); pts.add((float) dy); }
+            if (Math.hypot(dx, dy) <= keep) { pts.add((float) dx); pts.add((float) dy); ts.add((float) dt); }
         }
         t.skyTrack = new float[pts.size()];
         for (int i = 0; i < pts.size(); i++) t.skyTrack[i] = pts.get(i);
+        t.skyTrackT = new float[ts.size()];
+        for (int i = 0; i < ts.size(); i++) t.skyTrackT[i] = ts.get(i);
         if (t.body == Ephemeris.Body.MOON) {
             // direção do Sol a partir da Lua, no céu do observador
             double g = Geo.gmst(t.jdObserver);

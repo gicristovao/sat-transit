@@ -80,7 +80,7 @@ fun SkyThumbnail(t: Transit, size: Dp = 104.dp, modifier: Modifier = Modifier) {
     }
 }
 
-private fun DrawScope.drawChevron(at: Offset, ux: Float, uy: Float) {
+internal fun DrawScope.drawChevron(at: Offset, ux: Float, uy: Float) {
     val nx = -uy
     val ny = ux
     val tip = Offset(at.x + ux * 4.dp.toPx(), at.y + uy * 4.dp.toPx())
@@ -95,7 +95,7 @@ private fun DrawScope.drawChevron(at: Offset, ux: Float, uy: Float) {
 }
 
 /** Lua com a fase, com o lado iluminado virado para limbDeg (0 = direita, 90 = cima). */
-private fun DrawScope.drawMoon(c: Offset, r: Float, illum: Float, limbDeg: Float) {
+internal fun DrawScope.drawMoon(c: Offset, r: Float, illum: Float, limbDeg: Float) {
     drawCircle(Color(0xFF232A38), radius = r, center = c)
     drawCircle(Color(0xFF3A4256), radius = r, center = c, style = Stroke(width = 1f))
     val kf = illum.coerceIn(0f, 1f)

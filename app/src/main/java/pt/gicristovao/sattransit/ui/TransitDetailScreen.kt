@@ -70,6 +70,7 @@ fun TransitDetailScreen(
     BackHandler(onBack = onBack)
     var mapOpen by remember { mutableStateOf(false) }
     BackHandler(enabled = mapOpen) { mapOpen = false }
+    var preview by remember { mutableStateOf<Pair<Transit, Boolean>?>(null) }
     val context = LocalContext.current
     val sun = t.body == Ephemeris.Body.SUN
     val visible = t.visibleFromObserver()
@@ -159,7 +160,7 @@ fun TransitDetailScreen(
 
         Spacer(Modifier.height(4.dp))
         Button(
-            onClick = { Toast.makeText(context, context.getString(R.string.preview_soon), Toast.LENGTH_SHORT).show() },
+            onClick = { preview = t to false },
             colors = ButtonDefaults.buttonColors(containerColor = C.Amber, contentColor = C.Ink),
             shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)
         ) { Text(stringResource(R.string.preview), fontWeight = FontWeight.SemiBold, fontSize = 16.sp) }
@@ -170,12 +171,13 @@ fun TransitDetailScreen(
         ) { Text(stringResource(R.string.choose_on_map), fontWeight = FontWeight.Medium, fontSize = 16.sp) }
         Spacer(Modifier.height(8.dp))
     }
-    if (mapOpen) ExpandedMap(t, place, evaluate) { mapOpen = false }
+    if (mapOpen) ExpandedMap(t, place, evaluate, onPreview = { preview = it to true }) { mapOpen = false }
+    preview?.let { (pt, fromPin) -> PreviewScreen(pt, fromPin) { preview = null } }
     }
 }
 
 @Composable
-private fun ExpandedMap(t: Transit, place: Place, evaluate: suspend (Double, Double) -> Transit?, onClose: () -> Unit) {
+private fun ExpandedMap(t: Transit, place: Place, evaluate: suspend (Double, Double) -> Transit?, onPreview: (Transit) -> Unit, onClose: () -> Unit) {
     val context = LocalContext.current
     val sun = t.body == Ephemeris.Body.SUN
     var pin by remember { mutableStateOf(LatLng(t.centerLat, t.centerLon)) }
@@ -244,7 +246,7 @@ private fun ExpandedMap(t: Transit, place: Place, evaluate: suspend (Double, Dou
                         shape = RoundedCornerShape(14.dp), modifier = Modifier.weight(1f).heightIn(min = 52.dp)
                     ) { Text(stringResource(R.string.navigate_pin), fontWeight = FontWeight.Medium, fontSize = 15.sp) }
                     Button(
-                        onClick = { Toast.makeText(context, context.getString(R.string.preview_soon), Toast.LENGTH_SHORT).show() },
+                        onClick = { eval?.let(onPreview) },
                         colors = ButtonDefaults.buttonColors(containerColor = C.Amber, contentColor = C.Ink),
                         shape = RoundedCornerShape(14.dp), modifier = Modifier.weight(1f).heightIn(min = 52.dp)
                     ) { Text(stringResource(R.string.preview), fontWeight = FontWeight.SemiBold, fontSize = 15.sp) }
