@@ -84,7 +84,7 @@ class Updater(private val context: Context) {
                 redirects++
                 continue
             }
-            if (code != 200) throw IllegalStateException("Download falhou (HTTP $code)")
+            if (code != 200) throw IllegalStateException("HTTP $code")
             break
         }
         val total = conn.contentLengthLong.takeIf { it > 0 } ?: release.sizeBytes

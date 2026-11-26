@@ -49,6 +49,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import pt.gicristovao.sattransit.MainViewModel
+import pt.gicristovao.sattransit.R
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.stringArrayResource
+import java.text.DecimalFormatSymbols
 import pt.gicristovao.sattransit.UiState
 import pt.gicristovao.sattransit.UpdateState
 import androidx.compose.runtime.LaunchedEffect
@@ -73,7 +77,6 @@ object C {
     val Moon = Color(0xFF9DB4E8)
 }
 
-private val PT = Locale("pt", "PT")
 
 @Composable
 fun TransitListScreen(vm: MainViewModel, onRequestPermission: () -> Unit) {
@@ -108,16 +111,16 @@ fun TransitListScreen(vm: MainViewModel, onRequestPermission: () -> Unit) {
         Spacer(Modifier.height(20.dp))
         Text("SATTRANSIT", color = C.Amber, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.7.sp)
         Spacer(Modifier.height(10.dp))
-        Text("Próximos trânsitos", color = C.Text, fontSize = 30.sp, fontWeight = FontWeight.SemiBold, lineHeight = 33.sp)
+        Text(stringResource(R.string.upcoming_transits), color = C.Text, fontSize = 30.sp, fontWeight = FontWeight.SemiBold, lineHeight = 33.sp)
         Spacer(Modifier.height(14.dp))
         UpdateBanner(update) { vm.openSheet() }
-        Segmented(left = "Onde estou", right = "Outro local", rightSelected = otherPlace) { otherPlace = it }
+        Segmented(left = stringResource(R.string.where_i_am), right = stringResource(R.string.other_place), rightSelected = otherPlace) { otherPlace = it }
         Spacer(Modifier.height(8.dp))
 
         if (otherPlace) {
             Box(Modifier.fillMaxWidth().padding(top = 40.dp), contentAlignment = Alignment.Center) {
                 Text(
-                    "A pesquisa de outros locais chega na próxima versão.",
+                    stringResource(R.string.other_place_soon),
                     color = C.Muted, fontSize = 15.sp, textAlign = TextAlign.Center
                 )
             }
@@ -126,8 +129,8 @@ fun TransitListScreen(vm: MainViewModel, onRequestPermission: () -> Unit) {
 
         when (val s = state) {
             is UiState.NeedPermission -> Message(
-                "Para encontrar trânsitos onde estás, a app precisa da tua localização.",
-                "Permitir localização", onRequestPermission
+                stringResource(R.string.need_location),
+                stringResource(R.string.allow_location), onRequestPermission
             )
             is UiState.Loading -> Column(Modifier.fillMaxWidth().padding(top = 40.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(s.message, color = C.Muted, fontSize = 15.sp)
@@ -138,14 +141,14 @@ fun TransitListScreen(vm: MainViewModel, onRequestPermission: () -> Unit) {
                     LinearProgressIndicator(color = C.Amber, trackColor = C.Surface, modifier = Modifier.fillMaxWidth())
                 }
             }
-            is UiState.Error -> Message(s.message, "Tentar de novo") { onRequestPermission() }
+            is UiState.Error -> Message(s.message, stringResource(R.string.try_again)) { onRequestPermission() }
             is UiState.Ready -> {
                 LocationRow(s)
                 Spacer(Modifier.height(6.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Chip("Todos", filter == null) { filter = null }
-                    Chip("Sol", filter == Ephemeris.Body.SUN) { filter = Ephemeris.Body.SUN }
-                    Chip("Lua", filter == Ephemeris.Body.MOON) { filter = Ephemeris.Body.MOON }
+                    Chip(stringResource(R.string.filter_all), filter == null) { filter = null }
+                    Chip(stringResource(R.string.sun), filter == Ephemeris.Body.SUN) { filter = Ephemeris.Body.SUN }
+                    Chip(stringResource(R.string.moon), filter == Ephemeris.Body.MOON) { filter = Ephemeris.Body.MOON }
                 }
                 Spacer(Modifier.height(16.dp))
                 val list = s.transits.filter { filter == null || it.body == filter }
@@ -157,7 +160,7 @@ fun TransitListScreen(vm: MainViewModel, onRequestPermission: () -> Unit) {
                     if (list.isEmpty()) {
                         item {
                             Text(
-                                "Nenhum trânsito nos próximos ${s.days} dias num raio de ${s.radiusKm} km.",
+                                stringResource(R.string.none_found, s.days, s.radiusKm),
                                 color = C.Muted, fontSize = 15.sp, textAlign = TextAlign.Center,
                                 modifier = Modifier.fillMaxWidth().padding(top = 32.dp)
                             )
@@ -169,14 +172,14 @@ fun TransitListScreen(vm: MainViewModel, onRequestPermission: () -> Unit) {
                     item {
                         val h = (System.currentTimeMillis() - s.tleEpochMillis) / 3_600_000.0
                         Text(
-                            "Órbita atualizada há ${formatHours(h)}",
+                            stringResource(R.string.orbit_updated, formatHours(h)),
                             color = C.Faint, fontSize = 12.sp, textAlign = TextAlign.Center,
                             modifier = Modifier.fillMaxWidth().clickable { vm.refresh(force = true) }.padding(8.dp)
                         )
                     }
                     item {
                         Text(
-                            "SatTransit ${vm.updater.installedVersionName()} · Procurar atualizações",
+                            stringResource(R.string.version_check, vm.updater.installedVersionName()),
                             color = C.Faint, fontSize = 12.sp, textAlign = TextAlign.Center,
                             modifier = Modifier.fillMaxWidth().clickable { vm.checkUpdate(manual = true) }.padding(8.dp)
                         )
@@ -200,10 +203,10 @@ fun TransitListScreen(vm: MainViewModel, onRequestPermission: () -> Unit) {
 @Composable
 private fun UpdateBanner(update: UpdateState, onClick: () -> Unit) {
     val label = when (update) {
-        is UpdateState.Available -> "Versão ${update.release.versionName} disponível"
-        is UpdateState.Downloading -> "A descarregar a ${update.release.versionName}… ${(update.progress * 100).toInt()}%"
-        is UpdateState.Ready -> "Versão ${update.release.versionName} pronta a instalar"
-        is UpdateState.Failed -> "Falhou o download da ${update.release.versionName}"
+        is UpdateState.Available -> stringResource(R.string.update_available, update.release.versionName)
+        is UpdateState.Downloading -> stringResource(R.string.update_downloading, update.release.versionName, (update.progress * 100).toInt())
+        is UpdateState.Ready -> stringResource(R.string.update_ready, update.release.versionName)
+        is UpdateState.Failed -> stringResource(R.string.update_failed, update.release.versionName)
         UpdateState.None -> return
     }
     Row(
@@ -223,7 +226,7 @@ private fun UpdateBanner(update: UpdateState, onClick: () -> Unit) {
         Spacer(Modifier.size(12.dp))
         Text(label, color = Color(0xFFF1D9A8), fontSize = 14.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
         if (update is UpdateState.Available || update is UpdateState.Ready) {
-            Text(if (update is UpdateState.Ready) "Instalar" else "Atualizar", color = C.Amber, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+            Text(if (update is UpdateState.Ready) stringResource(R.string.install) else stringResource(R.string.update_action), color = C.Amber, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
         }
     }
 }
@@ -257,34 +260,34 @@ private fun UpdateSheet(
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text("SatTransit ${release.versionName}", color = C.Text, fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
                 val mb = if (release.sizeBytes > 0) " · ${release.sizeBytes / 1_000_000} MB" else ""
-                Text("Tens a $installedVersion$mb", color = C.Muted, fontSize = 13.sp)
+                Text(stringResource(R.string.you_have, installedVersion, mb), color = C.Muted, fontSize = 13.sp)
             }
             if (release.notes.isNotEmpty()) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("NOVIDADES", color = C.Faint, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp)
+                    Text(stringResource(R.string.whats_new), color = C.Faint, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp)
                     release.notes.take(8).forEach { Text("· $it", color = Color(0xFFD3D7E0), fontSize = 14.sp, lineHeight = 20.sp) }
                 }
             }
             when (state) {
                 is UpdateState.Downloading -> Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Row {
-                        Text("A descarregar…", color = C.Text, fontSize = 14.sp, modifier = Modifier.weight(1f))
+                        Text(stringResource(R.string.downloading), color = C.Text, fontSize = 14.sp, modifier = Modifier.weight(1f))
                         Text("${(state.progress * 100).toInt()}%", color = C.Text, fontSize = 14.sp, fontFamily = FontFamily.Monospace)
                     }
                     LinearProgressIndicator(progress = { state.progress }, color = C.Amber, trackColor = C.Ink, modifier = Modifier.fillMaxWidth().height(8.dp))
                 }
                 is UpdateState.Ready -> Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text("O Android vai pedir para confirmar a instalação. Os teus dados ficam guardados.", color = Color(0xFFD3D7E0), fontSize = 14.sp, lineHeight = 20.sp)
-                    PrimaryButton("Instalar", onInstall)
+                    Text(stringResource(R.string.install_note), color = Color(0xFFD3D7E0), fontSize = 14.sp, lineHeight = 20.sp)
+                    PrimaryButton(stringResource(R.string.install), onInstall)
                 }
                 is UpdateState.Failed -> Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(state.message, color = Color(0xFFF1D9A8), fontSize = 14.sp)
-                    PrimaryButton("Tentar de novo", onDownload)
-                    SecondaryButton("Mais tarde", onClose)
+                    PrimaryButton(stringResource(R.string.try_again), onDownload)
+                    SecondaryButton(stringResource(R.string.later), onClose)
                 }
                 else -> Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    PrimaryButton("Descarregar e instalar", onDownload)
-                    SecondaryButton("Mais tarde", onClose)
+                    PrimaryButton(stringResource(R.string.download_and_install), onDownload)
+                    SecondaryButton(stringResource(R.string.later), onClose)
                 }
             }
         }
@@ -308,16 +311,18 @@ private fun SecondaryButton(label: String, onClick: () -> Unit) {
     }
 }
 
+@Composable
 private fun formatHours(h: Double): String = when {
-    h < 1 -> "menos de 1 h"
-    h < 48 -> "${h.toInt()} h"
-    else -> "${(h / 24).toInt()} dias"
+    h < 1 -> stringResource(R.string.less_than_hour)
+    h < 48 -> stringResource(R.string.n_hours, h.toInt())
+    else -> stringResource(R.string.n_days, (h / 24).toInt())
 }
 
 @Composable
 private fun LocationRow(s: UiState.Ready) {
     val p = s.place
-    val coords = String.format(PT, "%.3f° %s · %.3f° %s", abs(p.lat), if (p.lat >= 0) "N" else "S", abs(p.lon), if (p.lon >= 0) "E" else "O")
+    val west = stringArrayResource(R.array.compass)[12]
+    val coords = String.format(Locale.getDefault(), "%.3f° %s · %.3f° %s", abs(p.lat), if (p.lat >= 0) "N" else "S", abs(p.lon), if (p.lon >= 0) "E" else west)
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.heightIn(min = 44.dp)) {
         Canvas(Modifier.size(18.dp)) {
             val st = Stroke(width = 2.dp.toPx())
@@ -326,7 +331,7 @@ private fun LocationRow(s: UiState.Ready) {
         }
         Spacer(Modifier.size(8.dp))
         Text(
-            "GPS · ${p.name ?: coords} · raio de ${s.radiusKm} km · ${s.days} dias",
+            stringResource(R.string.location_line, p.name ?: coords, s.radiusKm, s.days),
             color = C.Muted, fontSize = 14.sp
         )
     }
@@ -371,8 +376,8 @@ private fun Chip(label: String, selected: Boolean, onClick: () -> Unit) {
 private fun TransitCard(t: Transit, onClick: () -> Unit) {
     val visible = t.visibleFromObserver()
     val date = Date(Transit.jdToMillis(t.jdObserver))
-    val day = SimpleDateFormat("EEE, d MMM", PT).format(date).replace(".", "")
-    val hms = SimpleDateFormat("HH:mm:ss", PT).format(date)
+    val day = SimpleDateFormat("EEE, d MMM", Locale.getDefault()).format(date).replace(".", "")
+    val hms = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(date)
     val tenths = ((Transit.jdToMillis(t.jdObserver) % 1000) / 100).toInt()
     val sun = t.body == Ephemeris.Body.SUN
     Column(
@@ -384,20 +389,20 @@ private fun TransitCard(t: Transit, onClick: () -> Unit) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             BodyIcon(t)
             Spacer(Modifier.size(10.dp))
-            Text("${if (sun) "Sol" else "Lua"} · $day", color = C.Text, fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
+            Text("${stringResource(if (sun) R.string.sun else R.string.moon)} · $day", color = C.Text, fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.weight(1f))
             if (visible) {
-                Text("Visível daqui", color = C.Ink, fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
+                Text(stringResource(R.string.visible_here), color = C.Ink, fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.clip(RoundedCornerShape(6.dp)).background(C.Amber).padding(horizontal = 8.dp, vertical = 4.dp))
             }
         }
-        Text("$hms,$tenths", color = C.Text, fontSize = 30.sp, fontFamily = FontFamily.Monospace, letterSpacing = (-0.5).sp)
+        Text("$hms${DecimalFormatSymbols.getInstance().decimalSeparator}$tenths", color = C.Text, fontSize = 30.sp, fontFamily = FontFamily.Monospace, letterSpacing = (-0.5).sp)
         Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             val dur = if (visible) t.durationObserverS else t.durationCenterS
-            Meta(String.format(PT, "%.1f s", dur))
-            Meta(String.format(PT, "elev. %.0f°", t.altitudeDeg))
-            if (visible) Meta(String.format(PT, "%.1f km da linha central", t.centerlineDistanceKm))
-            else Meta(String.format(PT, "%.1f km da faixa", t.distanceToBandKm()))
+            Meta(stringResource(R.string.seconds_1, dur))
+            Meta(stringResource(R.string.elevation_short, t.altitudeDeg))
+            if (visible) Meta(stringResource(R.string.km_from_center, t.centerlineDistanceKm))
+            else Meta(stringResource(R.string.km_from_band, t.distanceToBandKm()))
         }
     }
 }

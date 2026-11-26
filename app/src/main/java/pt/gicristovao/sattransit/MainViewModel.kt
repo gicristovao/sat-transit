@@ -42,6 +42,8 @@ sealed interface UpdateState {
 
 class MainViewModel(app: Application) : AndroidViewModel(app) {
 
+    private fun str(id: Int): String = getApplication<Application>().getString(id)
+
     companion object {
         const val ISS = 25544
         const val ISS_SIZE_M = 109.0
@@ -82,8 +84,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     _update.value = UpdateState.Available(release)
                     if (manual) _sheetOpen.value = true
                 }
-                manual && r.isFailure -> _toast.value = "Não foi possível procurar atualizações."
-                manual -> _toast.value = "Já tens a versão mais recente."
+                manual && r.isFailure -> _toast.value = str(R.string.update_check_failed)
+                manual -> _toast.value = str(R.string.up_to_date)
             }
         }
     }
@@ -106,7 +108,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (e: Exception) {
-                _update.value = UpdateState.Failed(release, e.message ?: "Erro no download.")
+                _update.value = UpdateState.Failed(release, e.message ?: str(R.string.download_error))
             }
         }
     }
@@ -118,7 +120,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             updater.install(u.apk)
         } else {
             installPending = true
-            _toast.value = "Autoriza o SatTransit a instalar apps e volta atrás."
+            _toast.value = str(R.string.allow_install)
             updater.openInstallPermissionSettings()
         }
     }
@@ -129,32 +131,32 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun onPermissionDenied() {
-        _state.value = UiState.Error("Sem acesso à localização não é possível calcular os trânsitos onde estás.")
+        _state.value = UiState.Error(str(R.string.permission_denied))
     }
 
     fun refresh(force: Boolean = false) {
         job?.cancel()
         job = viewModelScope.launch {
             try {
-                _state.value = UiState.Loading("A obter a tua posição…", null)
+                _state.value = UiState.Loading(str(R.string.getting_position), null)
                 val place = locations.current()
-                    ?: throw IllegalStateException("Não foi possível obter a posição. Confirma que a localização está ligada.")
+                    ?: throw IllegalStateException(str(R.string.no_position))
 
-                _state.value = UiState.Loading("A obter dados orbitais…", null)
+                _state.value = UiState.Loading(str(R.string.getting_orbit), null)
                 val tle = tleRepo.get(ISS, force)
 
                 val eph = ephemeris ?: withContext(Dispatchers.IO) {
                     getApplication<Application>().assets.open("ephem_sun_moon.bin").use { Ephemeris(it) }
                 }.also { ephemeris = it }
 
-                _state.value = UiState.Loading("A calcular trânsitos…", 0f)
+                _state.value = UiState.Loading(str(R.string.computing), 0f)
                 val transits = withContext(Dispatchers.Default) {
                     val finder = TransitFinder(tle.tle, eph, ISS_SIZE_M)
                     finder.search(
                         place.lat, place.lon, place.altitudeM, RADIUS_KM.toDouble(),
                         Transit.millisToJd(System.currentTimeMillis()), DAYS.toDouble()
                     ) { f ->
-                        _state.value = UiState.Loading("A calcular trânsitos…", f.toFloat())
+                        _state.value = UiState.Loading(str(R.string.computing), f.toFloat())
                         isActive
                     }
                 }
@@ -164,7 +166,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (e: Exception) {
-                _state.value = UiState.Error(e.message ?: "Erro inesperado.")
+                _state.value = UiState.Error(e.message ?: str(R.string.unexpected_error))
             }
         }
     }

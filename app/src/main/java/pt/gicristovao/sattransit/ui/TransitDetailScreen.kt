@@ -47,13 +47,16 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import pt.gicristovao.sattransit.data.Place
+import pt.gicristovao.sattransit.R
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.stringArrayResource
+import java.text.DecimalFormatSymbols
 import pt.gicristovao.sattransit.engine.Ephemeris
 import pt.gicristovao.sattransit.engine.Transit
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-private val PT = Locale("pt", "PT")
 
 @Composable
 fun TransitDetailScreen(t: Transit, place: Place, onBack: () -> Unit) {
@@ -67,8 +70,9 @@ fun TransitDetailScreen(t: Transit, place: Place, onBack: () -> Unit) {
         while (true) { now = System.currentTimeMillis(); delay(100) }
     }
     val date = Date(whenMs)
-    val day = SimpleDateFormat("EEE, d MMM", PT).format(date).replace(".", "")
-    val hms = SimpleDateFormat("HH:mm:ss", PT).format(date) + "," + ((whenMs % 1000) / 100)
+    val day = SimpleDateFormat("EEE, d MMM", Locale.getDefault()).format(date).replace(".", "")
+    val dec = DecimalFormatSymbols.getInstance().decimalSeparator
+    val hms = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(date) + dec + ((whenMs % 1000) / 100)
 
     Column(
         Modifier.fillMaxSize().background(C.Ink).statusBarsPadding().navigationBarsPadding()
@@ -89,41 +93,41 @@ fun TransitDetailScreen(t: Transit, place: Place, onBack: () -> Unit) {
             }
             if (sun) SunIcon() else MoonPhaseIcon(t.moonIllumination.toFloat(), t.moonWaxing)
             Column {
-                Text("${if (sun) "Sol" else "Lua"} · $day", color = C.Text, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
-                Text("ISS · ${countdown(whenMs - now)}", color = C.Muted, fontSize = 13.sp, fontFamily = FontFamily.Monospace)
+                Text("${stringResource(if (sun) R.string.sun else R.string.moon)} · $day", color = C.Text, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+                Text("ISS · ${countdown(whenMs - now, dec)}", color = C.Muted, fontSize = 13.sp, fontFamily = FontFamily.Monospace)
             }
         }
 
         Box(Modifier.fillMaxWidth().height(260.dp).clip(RoundedCornerShape(16.dp)).border(1.dp, C.CardLine, RoundedCornerShape(16.dp))) {
             BandMap(t, place.lat, place.lon, Modifier.fillMaxSize())
             Text(
-                String.format(PT, "Faixa de visibilidade · %.1f km", t.bandWidthKm),
+                stringResource(R.string.band_width, t.bandWidthKm),
                 color = if (sun) C.Amber else C.Moon, fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.padding(10.dp).clip(RoundedCornerShape(6.dp)).background(C.Ink).padding(horizontal = 8.dp, vertical = 4.dp)
             )
             Text(
-                if (visible) "Tu · dentro da faixa" else String.format(PT, "Tu · a %.1f km da faixa", t.distanceToBandKm()),
+                if (visible) stringResource(R.string.you_inside) else stringResource(R.string.you_outside, t.distanceToBandKm()),
                 color = C.Text, fontSize = 12.sp,
                 modifier = Modifier.align(Alignment.BottomStart).padding(start = 10.dp, bottom = 26.dp)
                     .clip(RoundedCornerShape(6.dp)).background(C.Ink).padding(horizontal = 8.dp, vertical = 4.dp)
             )
         }
 
-        val durLabel = if (visible) "Duração daqui" else "Duração na linha central"
+        val durLabel = stringResource(if (visible) R.string.duration_here else R.string.duration_center)
         val dur = if (visible) t.durationObserverS else t.durationCenterS
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Stat("Hora", hms, Modifier.weight(1f))
-                Stat(durLabel, String.format(PT, "%.2f s", dur), Modifier.weight(1f))
+                Stat(stringResource(R.string.time), hms, Modifier.weight(1f))
+                Stat(durLabel, stringResource(R.string.seconds_2, dur), Modifier.weight(1f))
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Stat("Elevação · azimute", String.format(PT, "%.0f° · %.0f° %s", t.altitudeDeg, t.azimuthDeg, compass(t.azimuthDeg)), Modifier.weight(1f))
-                Stat("Distância à ISS", String.format(PT, "%.0f km", t.rangeKm), Modifier.weight(1f))
+                Stat(stringResource(R.string.elevation_azimuth), String.format(Locale.getDefault(), "%.0f° · %.0f° %s", t.altitudeDeg, t.azimuthDeg, compass(t.azimuthDeg)), Modifier.weight(1f))
+                Stat(stringResource(R.string.distance_to_iss), String.format(Locale.getDefault(), "%.0f km", t.rangeKm), Modifier.weight(1f))
             }
         }
         if (!visible) {
             Text(
-                "Daqui a ISS passa ao lado do disco. Para a ver cruzar, desloca-te para dentro da faixa.",
+                stringResource(R.string.outside_note),
                 color = C.Muted, fontSize = 13.sp, lineHeight = 18.sp
             )
         }
@@ -144,7 +148,7 @@ fun TransitDetailScreen(t: Transit, place: Place, onBack: () -> Unit) {
                     drawCircle(C.Amber, radius = sw * 0.6f, center = Offset(w / 2, w * 0.74f))
                 }
                 Text(
-                    "Usa sempre um filtro solar certificado à frente da objectiva. Nunca olhes para o Sol pelo visor óptico sem filtro.",
+                    stringResource(R.string.solar_warning),
                     color = Color(0xFFF1D9A8), fontSize = 13.sp, lineHeight = 18.sp
                 )
             }
@@ -152,10 +156,10 @@ fun TransitDetailScreen(t: Transit, place: Place, onBack: () -> Unit) {
 
         Spacer(Modifier.height(4.dp))
         Button(
-            onClick = { Toast.makeText(context, "A simulação na câmara chega numa próxima versão.", Toast.LENGTH_SHORT).show() },
+            onClick = { Toast.makeText(context, context.getString(R.string.preview_soon), Toast.LENGTH_SHORT).show() },
             colors = ButtonDefaults.buttonColors(containerColor = C.Amber, contentColor = C.Ink),
             shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)
-        ) { Text("Simular na câmara", fontWeight = FontWeight.SemiBold, fontSize = 16.sp) }
+        ) { Text(stringResource(R.string.preview), fontWeight = FontWeight.SemiBold, fontSize = 16.sp) }
         OutlinedButton(
             onClick = {
                 val uri = Uri.parse(String.format(Locale.US, "https://www.google.com/maps/dir/?api=1&destination=%.6f,%.6f", t.centerLat, t.centerLon))
@@ -163,7 +167,7 @@ fun TransitDetailScreen(t: Transit, place: Place, onBack: () -> Unit) {
             },
             border = BorderStroke(1.dp, C.Line), colors = ButtonDefaults.outlinedButtonColors(contentColor = C.Text),
             shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)
-        ) { Text("Navegar até à linha central", fontWeight = FontWeight.Medium, fontSize = 16.sp) }
+        ) { Text(stringResource(R.string.navigate_center), fontWeight = FontWeight.Medium, fontSize = 16.sp) }
         Spacer(Modifier.height(8.dp))
     }
 }
@@ -176,21 +180,23 @@ private fun Stat(label: String, value: String, modifier: Modifier) {
     }
 }
 
+@Composable
 private fun compass(az: Double): String {
-    val names = listOf("N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSO", "SO", "OSO", "O", "ONO", "NO", "NNO")
+    val names = stringArrayResource(R.array.compass)
     return names[((az / 22.5) + 0.5).toInt() % 16]
 }
 
-private fun countdown(ms: Long): String {
-    if (ms <= 0) return if (ms > -5000) "a acontecer agora" else "já passou"
+@Composable
+private fun countdown(ms: Long, dec: Char): String {
+    if (ms <= 0) return stringResource(if (ms > -5000) R.string.now_happening else R.string.already_passed)
     val totalS = ms / 1000
     val d = totalS / 86400
     val h = (totalS % 86400) / 3600
     val m = (totalS % 3600) / 60
     val s = totalS % 60
     return when {
-        d > 0 -> "faltam ${d} d ${h} h ${m} min"
-        h > 0 -> String.format(PT, "faltam %d h %02d min %02d s", h, m, s)
-        else -> String.format(PT, "faltam %02d:%02d,%d", m, s, (ms % 1000) / 100)
+        d > 0 -> stringResource(R.string.left_days, d.toInt(), h.toInt(), m.toInt())
+        h > 0 -> stringResource(R.string.left_hours, h.toInt(), m.toInt(), s.toInt())
+        else -> stringResource(R.string.left_minutes, m.toInt(), s.toInt(), dec.toString(), ((ms % 1000) / 100).toInt())
     }
 }

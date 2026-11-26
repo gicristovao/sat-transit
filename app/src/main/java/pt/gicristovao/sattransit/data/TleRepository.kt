@@ -37,7 +37,7 @@ class TleRepository(private val context: Context) {
             return@withContext Result(tle, System.currentTimeMillis(), false)
         }
         if (cached != null) return@withContext Result(cached, file.lastModified(), true)
-        throw IllegalStateException("Sem ligação e sem dados orbitais guardados.")
+        throw IllegalStateException(context.getString(pt.gicristovao.sattransit.R.string.no_orbit_data))
     }
 
     private fun download(url: String): String {

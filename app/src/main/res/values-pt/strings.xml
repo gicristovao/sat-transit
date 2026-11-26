@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="upcoming_transits">Próximos trânsitos</string>
+    <string name="where_i_am">Onde estou</string>
+    <string name="other_place">Outro local</string>
+    <string name="other_place_soon">A pesquisa de outros locais chega numa próxima versão.</string>
+    <string name="need_location">Para encontrar trânsitos onde estás, a app precisa da tua localização.</string>
+    <string name="allow_location">Permitir localização</string>
+    <string name="try_again">Tentar de novo</string>
+    <string name="filter_all">Todos</string>
+    <string name="sun">Sol</string>
+    <string name="moon">Lua</string>
+    <string name="none_found">Nenhum trânsito nos próximos %1$d dias num raio de %2$d km.</string>
+    <string name="orbit_updated">Órbita atualizada há %s</string>
+    <string name="less_than_hour">menos de 1 h</string>
+    <string name="n_hours">%d h</string>
+    <string name="n_days">%d dias</string>
+    <string name="version_check">SatTransit %s · Procurar atualizações</string>
+    <string name="location_line">GPS · %1$s · raio de %2$d km · %3$d dias</string>
+    <string name="visible_here">Visível daqui</string>
+    <string name="seconds_1">%.1f s</string>
+    <string name="seconds_2">%.2f s</string>
+    <string name="elevation_short">elev. %.0f°</string>
+    <string name="km_from_center">%.1f km da linha central</string>
+    <string name="km_from_band">%.1f km da faixa</string>
+
+    <string name="getting_position">A obter a tua posição…</string>
+    <string name="getting_orbit">A obter dados orbitais…</string>
+    <string name="computing">A calcular trânsitos…</string>
+    <string name="permission_denied">Sem acesso à localização não é possível calcular os trânsitos onde estás.</string>
+    <string name="no_position">Não foi possível obter a posição. Confirma que a localização está ligada.</string>
+    <string name="no_orbit_data">Sem ligação e sem dados orbitais guardados.</string>
+    <string name="unexpected_error">Erro inesperado.</string>
+
+    <string name="update_available">Versão %s disponível</string>
+    <string name="update_downloading">A descarregar a %1$s… %2$d%%</string>
+    <string name="update_ready">Versão %s pronta a instalar</string>
+    <string name="update_failed">Falhou o download da %s</string>
+    <string name="update_action">Atualizar</string>
+    <string name="install">Instalar</string>
+    <string name="you_have">Tens a %1$s%2$s</string>
+    <string name="whats_new">NOVIDADES</string>
+    <string name="downloading">A descarregar…</string>
+    <string name="install_note">O Android vai pedir para confirmar a instalação. Os teus dados ficam guardados.</string>
+    <string name="download_and_install">Descarregar e instalar</string>
+    <string name="later">Mais tarde</string>
+    <string name="up_to_date">Já tens a versão mais recente.</string>
+    <string name="update_check_failed">Não foi possível procurar atualizações.</string>
+    <string name="allow_install">Autoriza o SatTransit a instalar apps e volta atrás.</string>
+    <string name="download_error">Erro no download.</string>
+
+    <string name="band_width">Faixa de visibilidade · %.1f km</string>
+    <string name="you_inside">Tu · dentro da faixa</string>
+    <string name="you_outside">Tu · a %.1f km da faixa</string>
+    <string name="time">Hora</string>
+    <string name="duration_here">Duração daqui</string>
+    <string name="duration_center">Duração na linha central</string>
+    <string name="elevation_azimuth">Elevação · azimute</string>
+    <string name="distance_to_iss">Distância à ISS</string>
+    <string name="outside_note">Daqui a ISS passa ao lado do disco. Para a ver cruzar, desloca-te para dentro da faixa.</string>
+    <string name="solar_warning">Usa sempre um filtro solar certificado à frente da objectiva. Nunca olhes para o Sol pelo visor óptico sem filtro.</string>
+    <string name="preview">Pré-visualizar</string>
+    <string name="preview_soon">A pré-visualização chega numa próxima versão.</string>
+    <string name="navigate_center">Navegar até à linha central</string>
+    <string name="back">Voltar</string>
+    <string name="now_happening">a acontecer agora</string>
+    <string name="already_passed">já passou</string>
+    <string name="left_days">faltam %1$d d %2$d h %3$d min</string>
+    <string name="left_hours">faltam %1$d h %2$02d min %3$02d s</string>
+    <string name="left_minutes">faltam %1$02d:%2$02d%3$s%4$d</string>
+    <string-array name="compass">
+        <item>N</item><item>NNE</item><item>NE</item><item>ENE</item><item>E</item><item>ESE</item><item>SE</item><item>SSE</item>
+        <item>S</item><item>SSO</item><item>SO</item><item>OSO</item><item>O</item><item>ONO</item><item>NO</item><item>NNO</item>
+    </string-array>
+</resources>

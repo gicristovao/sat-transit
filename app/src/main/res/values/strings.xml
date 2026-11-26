@@ -1,4 +1,81 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">SatTransit</string>
+    <string name="app_name" translatable="false">SatTransit</string>
+
+    <!-- Lista -->
+    <string name="upcoming_transits">Upcoming transits</string>
+    <string name="where_i_am">Where I am</string>
+    <string name="other_place">Other place</string>
+    <string name="other_place_soon">Searching other places is coming in a future version.</string>
+    <string name="need_location">To find transits where you are, the app needs your location.</string>
+    <string name="allow_location">Allow location</string>
+    <string name="try_again">Try again</string>
+    <string name="filter_all">All</string>
+    <string name="sun">Sun</string>
+    <string name="moon">Moon</string>
+    <string name="none_found">No transits in the next %1$d days within %2$d km.</string>
+    <string name="orbit_updated">Orbit updated %s ago</string>
+    <string name="less_than_hour">less than 1 h</string>
+    <string name="n_hours">%d h</string>
+    <string name="n_days">%d days</string>
+    <string name="version_check">SatTransit %s · Check for updates</string>
+    <string name="location_line">GPS · %1$s · %2$d km radius · %3$d days</string>
+    <string name="visible_here">Visible here</string>
+    <string name="seconds_1">%.1f s</string>
+    <string name="seconds_2">%.2f s</string>
+    <string name="elevation_short">elev. %.0f°</string>
+    <string name="km_from_center">%.1f km from centre line</string>
+    <string name="km_from_band">%.1f km from the band</string>
+
+    <!-- Carregamento e erros -->
+    <string name="getting_position">Getting your position…</string>
+    <string name="getting_orbit">Getting orbital data…</string>
+    <string name="computing">Computing transits…</string>
+    <string name="permission_denied">Without location access the app can\'t compute transits where you are.</string>
+    <string name="no_position">Couldn\'t get your position. Check that location is turned on.</string>
+    <string name="no_orbit_data">No connection and no saved orbital data.</string>
+    <string name="unexpected_error">Unexpected error.</string>
+
+    <!-- Atualizações -->
+    <string name="update_available">Version %s available</string>
+    <string name="update_downloading">Downloading %1$s… %2$d%%</string>
+    <string name="update_ready">Version %s ready to install</string>
+    <string name="update_failed">Download of %s failed</string>
+    <string name="update_action">Update</string>
+    <string name="install">Install</string>
+    <string name="you_have">You have %1$s%2$s</string>
+    <string name="whats_new">WHAT\'S NEW</string>
+    <string name="downloading">Downloading…</string>
+    <string name="install_note">Android will ask you to confirm the installation. Your data is kept.</string>
+    <string name="download_and_install">Download and install</string>
+    <string name="later">Later</string>
+    <string name="up_to_date">You already have the latest version.</string>
+    <string name="update_check_failed">Couldn\'t check for updates.</string>
+    <string name="allow_install">Allow SatTransit to install apps, then go back.</string>
+    <string name="download_error">Download error.</string>
+
+    <!-- Detalhe -->
+    <string name="band_width">Visibility band · %.1f km</string>
+    <string name="you_inside">You · inside the band</string>
+    <string name="you_outside">You · %.1f km from the band</string>
+    <string name="time">Time</string>
+    <string name="duration_here">Duration here</string>
+    <string name="duration_center">Duration on centre line</string>
+    <string name="elevation_azimuth">Elevation · azimuth</string>
+    <string name="distance_to_iss">Distance to ISS</string>
+    <string name="outside_note">From here the ISS passes beside the disc. To see it cross, move inside the band.</string>
+    <string name="solar_warning">Always use a certified solar filter in front of the lens. Never look at the Sun through an optical viewfinder without a filter.</string>
+    <string name="preview">Preview</string>
+    <string name="preview_soon">Preview is coming in a future version.</string>
+    <string name="navigate_center">Navigate to centre line</string>
+    <string name="back">Back</string>
+    <string name="now_happening">happening now</string>
+    <string name="already_passed">already passed</string>
+    <string name="left_days">in %1$d d %2$d h %3$d min</string>
+    <string name="left_hours">in %1$d h %2$02d min %3$02d s</string>
+    <string name="left_minutes">in %1$02d:%2$02d%3$s%4$d</string>
+    <string-array name="compass">
+        <item>N</item><item>NNE</item><item>NE</item><item>ENE</item><item>E</item><item>ESE</item><item>SE</item><item>SSE</item>
+        <item>S</item><item>SSW</item><item>SW</item><item>WSW</item><item>W</item><item>WNW</item><item>NW</item><item>NNW</item>
+    </string-array>
 </resources>
