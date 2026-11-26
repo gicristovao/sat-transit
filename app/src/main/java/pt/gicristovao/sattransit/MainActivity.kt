@@ -30,6 +30,11 @@ class MainActivity : ComponentActivity() {
         if (savedInstanceState == null) requestLocation()
     }
 
+    override fun onResume() {
+        super.onResume()
+        vm.onResume()
+    }
+
     private fun requestLocation() {
         val granted = ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) ==
             PackageManager.PERMISSION_GRANTED

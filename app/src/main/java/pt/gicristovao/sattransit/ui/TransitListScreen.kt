@@ -6,6 +6,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -48,6 +49,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import pt.gicristovao.sattransit.MainViewModel
 import pt.gicristovao.sattransit.UiState
+import pt.gicristovao.sattransit.UpdateState
+import androidx.compose.runtime.LaunchedEffect
 import pt.gicristovao.sattransit.engine.Ephemeris
 import pt.gicristovao.sattransit.engine.Transit
 import java.text.SimpleDateFormat
@@ -77,7 +80,14 @@ fun TransitListScreen(vm: MainViewModel, onRequestPermission: () -> Unit) {
     var otherPlace by remember { mutableStateOf(false) }
     var filter by remember { mutableStateOf<Ephemeris.Body?>(null) }
     val context = LocalContext.current
+    val update by vm.update.collectAsStateWithLifecycle()
+    val sheetOpen by vm.sheetOpen.collectAsStateWithLifecycle()
+    val toast by vm.toast.collectAsStateWithLifecycle()
+    LaunchedEffect(toast) {
+        toast?.let { Toast.makeText(context, it, Toast.LENGTH_LONG).show(); vm.toastShown() }
+    }
 
+    Box(Modifier.fillMaxSize()) {
     Column(
         Modifier
             .fillMaxSize()
@@ -91,6 +101,7 @@ fun TransitListScreen(vm: MainViewModel, onRequestPermission: () -> Unit) {
         Spacer(Modifier.height(10.dp))
         Text("Próximos trânsitos", color = C.Text, fontSize = 30.sp, fontWeight = FontWeight.SemiBold, lineHeight = 33.sp)
         Spacer(Modifier.height(14.dp))
+        UpdateBanner(update) { vm.openSheet() }
         Segmented(left = "Onde estou", right = "Outro local", rightSelected = otherPlace) { otherPlace = it }
         Spacer(Modifier.height(8.dp))
 
@@ -156,9 +167,137 @@ fun TransitListScreen(vm: MainViewModel, onRequestPermission: () -> Unit) {
                             modifier = Modifier.fillMaxWidth().clickable { vm.refresh(force = true) }.padding(8.dp)
                         )
                     }
+                    item {
+                        Text(
+                            "SatTransit ${vm.updater.installedVersionName()} · Procurar atualizações",
+                            color = C.Faint, fontSize = 12.sp, textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth().clickable { vm.checkUpdate(manual = true) }.padding(8.dp)
+                        )
+                    }
                 }
             }
         }
+    }
+    if (sheetOpen && update !is UpdateState.None) {
+        UpdateSheet(
+            state = update,
+            installedVersion = vm.updater.installedVersionName(),
+            onDownload = vm::startDownload,
+            onInstall = vm::install,
+            onClose = vm::closeSheet,
+        )
+    }
+    }
+}
+
+@Composable
+private fun UpdateBanner(update: UpdateState, onClick: () -> Unit) {
+    val label = when (update) {
+        is UpdateState.Available -> "Versão ${update.release.versionName} disponível"
+        is UpdateState.Downloading -> "A descarregar a ${update.release.versionName}… ${(update.progress * 100).toInt()}%"
+        is UpdateState.Ready -> "Versão ${update.release.versionName} pronta a instalar"
+        is UpdateState.Failed -> "Falhou o download da ${update.release.versionName}"
+        UpdateState.None -> return
+    }
+    Row(
+        Modifier.fillMaxWidth().padding(bottom = 14.dp).heightIn(min = 56.dp).clip(RoundedCornerShape(14.dp))
+            .background(Color(0xFF1E1708)).border(1.dp, C.Amber, RoundedCornerShape(14.dp))
+            .clickable(onClick = onClick).padding(horizontal = 14.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Canvas(Modifier.size(22.dp)) {
+            val w = size.minDimension
+            val sw = 2.dp.toPx()
+            drawLine(C.Amber, Offset(w / 2, w * 0.15f), Offset(w / 2, w * 0.62f), strokeWidth = sw)
+            drawLine(C.Amber, Offset(w * 0.28f, w * 0.42f), Offset(w / 2, w * 0.64f), strokeWidth = sw)
+            drawLine(C.Amber, Offset(w * 0.72f, w * 0.42f), Offset(w / 2, w * 0.64f), strokeWidth = sw)
+            drawLine(C.Amber, Offset(w * 0.2f, w * 0.85f), Offset(w * 0.8f, w * 0.85f), strokeWidth = sw)
+        }
+        Spacer(Modifier.size(12.dp))
+        Text(label, color = Color(0xFFF1D9A8), fontSize = 14.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
+        if (update is UpdateState.Available || update is UpdateState.Ready) {
+            Text(if (update is UpdateState.Ready) "Instalar" else "Atualizar", color = C.Amber, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+        }
+    }
+}
+
+@Composable
+private fun UpdateSheet(
+    state: UpdateState,
+    installedVersion: String,
+    onDownload: () -> Unit,
+    onInstall: () -> Unit,
+    onClose: () -> Unit,
+) {
+    val release = when (state) {
+        is UpdateState.Available -> state.release
+        is UpdateState.Downloading -> state.release
+        is UpdateState.Ready -> state.release
+        is UpdateState.Failed -> state.release
+        UpdateState.None -> return
+    }
+    Box(
+        Modifier.fillMaxSize().background(Color(0xB805070B)).clickable(onClick = onClose),
+        contentAlignment = Alignment.BottomCenter
+    ) {
+        Column(
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp)).background(C.Surface)
+                .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) {}
+                .navigationBarsPadding().padding(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Box(Modifier.align(Alignment.CenterHorizontally).size(width = 40.dp, height = 4.dp).clip(RoundedCornerShape(2.dp)).background(Color(0xFF3A4256)))
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text("SatTransit ${release.versionName}", color = C.Text, fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
+                val mb = if (release.sizeBytes > 0) " · ${release.sizeBytes / 1_000_000} MB" else ""
+                Text("Tens a $installedVersion$mb", color = C.Muted, fontSize = 13.sp)
+            }
+            if (release.notes.isNotEmpty()) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("NOVIDADES", color = C.Faint, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, letterSpacing = 1.sp)
+                    release.notes.take(8).forEach { Text("· $it", color = Color(0xFFD3D7E0), fontSize = 14.sp, lineHeight = 20.sp) }
+                }
+            }
+            when (state) {
+                is UpdateState.Downloading -> Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row {
+                        Text("A descarregar…", color = C.Text, fontSize = 14.sp, modifier = Modifier.weight(1f))
+                        Text("${(state.progress * 100).toInt()}%", color = C.Text, fontSize = 14.sp, fontFamily = FontFamily.Monospace)
+                    }
+                    LinearProgressIndicator(progress = { state.progress }, color = C.Amber, trackColor = C.Ink, modifier = Modifier.fillMaxWidth().height(8.dp))
+                }
+                is UpdateState.Ready -> Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("O Android vai pedir para confirmar a instalação. Os teus dados ficam guardados.", color = Color(0xFFD3D7E0), fontSize = 14.sp, lineHeight = 20.sp)
+                    PrimaryButton("Instalar", onInstall)
+                }
+                is UpdateState.Failed -> Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(state.message, color = Color(0xFFF1D9A8), fontSize = 14.sp)
+                    PrimaryButton("Tentar de novo", onDownload)
+                    SecondaryButton("Mais tarde", onClose)
+                }
+                else -> Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    PrimaryButton("Descarregar e instalar", onDownload)
+                    SecondaryButton("Mais tarde", onClose)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PrimaryButton(label: String, onClick: () -> Unit) {
+    Button(onClick = onClick, colors = ButtonDefaults.buttonColors(containerColor = C.Amber, contentColor = C.Ink),
+        shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
+        Text(label, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+    }
+}
+
+@Composable
+private fun SecondaryButton(label: String, onClick: () -> Unit) {
+    OutlinedButton(onClick = onClick, border = BorderStroke(1.dp, C.Line),
+        colors = ButtonDefaults.outlinedButtonColors(contentColor = C.Text),
+        shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
+        Text(label, fontWeight = FontWeight.Medium, fontSize = 16.sp)
     }
 }
 

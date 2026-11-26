@@ -37,11 +37,14 @@ jobs:
           name: SatTransit-0.1.${{ github.run_number }}
           path: SatTransit-*.apk
 
+      - name: Notas da versão
+        run: git log -1 --pretty=%B | grep -v -e '^Co-Authored-By' -e '^Claude-Session' > notes.md
+
       - name: Publicar versão
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v0.1.${{ github.run_number }}
           name: SatTransit 0.1.${{ github.run_number }}
-          body: Versão de teste compilada automaticamente a partir de ${{ github.sha }}.
-          prerelease: true
+          body_path: notes.md
+          make_latest: "true"
           files: SatTransit-*.apk
