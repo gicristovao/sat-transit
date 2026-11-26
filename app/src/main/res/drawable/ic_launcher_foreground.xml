@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Disco solar com a silhueta de uma estação espacial a atravessá-lo -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <path android:fillColor="#F5A524"
+        android:pathData="M54,30a24,24 0,1 1,0 48a24,24 0,1 1,0 -48z" />
+    <path android:strokeColor="#0B0E14" android:strokeWidth="1.2"
+        android:strokeLineCap="round" android:pathData="M30,62 L78,46" />
+    <group android:rotation="-18.4" android:pivotX="54" android:pivotY="54">
+        <path android:fillColor="#0B0E14" android:pathData="M46,52.6h16v2.8h-16z" />
+        <path android:fillColor="#0B0E14" android:pathData="M47,47h3v14h-3z" />
+        <path android:fillColor="#0B0E14" android:pathData="M58,47h3v14h-3z" />
+        <path android:fillColor="#0B0E14" android:pathData="M52.5,51h3v6h-3z" />
+    </group>
+</vector>
