@@ -8,6 +8,8 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -372,38 +374,42 @@ private fun Chip(label: String, selected: Boolean, onClick: () -> Unit) {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun TransitCard(t: Transit, onClick: () -> Unit) {
     val visible = t.visibleFromObserver()
     val date = Date(Transit.jdToMillis(t.jdObserver))
     val day = SimpleDateFormat("EEE, d MMM", Locale.getDefault()).format(date).replace(".", "")
     val hms = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(date)
-    val tenths = ((Transit.jdToMillis(t.jdObserver) % 1000) / 100).toInt()
     val sun = t.body == Ephemeris.Body.SUN
-    Column(
+    Row(
         Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(C.Surface)
             .border(1.dp, if (visible) C.Amber else C.CardLine, RoundedCornerShape(16.dp))
-            .clickable(onClick = onClick).padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+            .clickable(onClick = onClick).padding(14.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            BodyIcon(t)
-            Spacer(Modifier.size(10.dp))
-            Text("${stringResource(if (sun) R.string.sun else R.string.moon)} · $day", color = C.Text, fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.weight(1f))
-            if (visible) {
-                Text(stringResource(R.string.visible_here), color = C.Ink, fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.clip(RoundedCornerShape(6.dp)).background(C.Amber).padding(horizontal = 8.dp, vertical = 4.dp))
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                BodyIcon(t)
+                Spacer(Modifier.size(8.dp))
+                Text("${stringResource(if (sun) R.string.sun else R.string.moon)} · $day", color = C.Text, fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold, maxLines = 1)
+            }
+            Text(hms, color = C.Text, fontSize = 28.sp, fontFamily = FontFamily.Monospace, letterSpacing = (-0.5).sp)
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                if (visible) {
+                    Text(stringResource(R.string.visible_here), color = C.Ink, fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.align(Alignment.CenterVertically).clip(RoundedCornerShape(5.dp)).background(C.Amber)
+                            .padding(horizontal = 6.dp, vertical = 2.dp))
+                }
+                val dur = if (visible) t.durationObserverS else t.durationCenterS
+                Meta(stringResource(R.string.seconds_1, dur))
+                Meta(stringResource(R.string.elevation_short, t.altitudeDeg))
+                if (!visible) Meta(stringResource(R.string.km_from_band, t.distanceToBandKm()))
             }
         }
-        Text("$hms${DecimalFormatSymbols.getInstance().decimalSeparator}$tenths", color = C.Text, fontSize = 30.sp, fontFamily = FontFamily.Monospace, letterSpacing = (-0.5).sp)
-        Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            val dur = if (visible) t.durationObserverS else t.durationCenterS
-            Meta(stringResource(R.string.seconds_1, dur))
-            Meta(stringResource(R.string.elevation_short, t.altitudeDeg))
-            if (visible) Meta(stringResource(R.string.km_from_center, t.centerlineDistanceKm))
-            else Meta(stringResource(R.string.km_from_band, t.distanceToBandKm()))
-        }
+        SkyThumbnail(t)
     }
 }
 

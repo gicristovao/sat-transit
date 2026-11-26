@@ -204,7 +204,62 @@ public final class TransitFinder {
         for (int i = 0; i < pts.size(); i++) t.centerline[i] = pts.get(i);
         t.tleAgeDays = t.jdObserver - epochJd;
         if (body == Ephemeris.Body.MOON) moonPhase(t);
+        skyView(t, lat, lon, obsE);
         return t;
+    }
+
+    /** Alt/az (graus) do satélite e do corpo vistos de obsE no instante jd: {altS, azS, altB, azB}. */
+    private double[] altAzPair(Ephemeris.Body body, double jd, double lat, double lon, double[] obsE) {
+        double g = Geo.gmst(jd);
+        Geo.ecefToTeme(obsE, g, obsT);
+        sgp4.positionAt(jd, satT);
+        eph.position(body, jd, bodT);
+        for (int k = 0; k < 3; k++) { s[k] = satT[k] - obsT[k]; b[k] = bodT[k] - obsT[k]; }
+        double[] e1 = new double[3], e2 = new double[3];
+        Geo.temeToEcef(s, g, e1);
+        Geo.temeToEcef(b, g, e2);
+        double[] a1 = Geo.altAz(lat, lon, e1), a2 = Geo.altAz(lat, lon, e2);
+        return new double[]{a1[0], a1[1], a2[0], a2[1]};
+    }
+
+    /** Trajetória no céu à volta do disco e direção do lado iluminado da Lua. */
+    private void skyView(Transit t, double lat, double lon, double[] obsE) {
+        double r = t.bodyRadiusArcsec;
+        double field = Math.max(1.7 * r, 1.25 * t.minSeparationArcsec + 0.3 * r);
+        t.skyFieldArcsec = field;
+        double keep = 1.6 * field;
+        java.util.ArrayList<Float> pts = new java.util.ArrayList<>();
+        for (double dt = -40.0; dt <= 40.0; dt += 0.05) {
+            double[] p = altAzPair(t.body, t.jdObserver + dt * SEC, lat, lon, obsE);
+            double daz = p[1] - p[3];
+            if (daz > 180) daz -= 360;
+            if (daz < -180) daz += 360;
+            double dx = daz * Math.cos(Math.toRadians(p[2])) * 3600.0;
+            double dy = (p[0] - p[2]) * 3600.0;
+            if (Math.hypot(dx, dy) <= keep) { pts.add((float) dx); pts.add((float) dy); }
+        }
+        t.skyTrack = new float[pts.size()];
+        for (int i = 0; i < pts.size(); i++) t.skyTrack[i] = pts.get(i);
+        if (t.body == Ephemeris.Body.MOON) {
+            // direção do Sol a partir da Lua, no céu do observador
+            double g = Geo.gmst(t.jdObserver);
+            Geo.ecefToTeme(obsE, g, obsT);
+            double[] m = new double[3], sn = new double[3];
+            eph.position(Ephemeris.Body.MOON, t.jdObserver, m);
+            eph.position(Ephemeris.Body.SUN, t.jdObserver, sn);
+            for (int k = 0; k < 3; k++) { m[k] -= obsT[k]; sn[k] -= obsT[k]; }
+            double[] em = new double[3], es = new double[3];
+            Geo.temeToEcef(m, g, em);
+            Geo.temeToEcef(sn, g, es);
+            double[] am = Geo.altAz(lat, lon, em), as = Geo.altAz(lat, lon, es);
+            // rumo inicial do grande círculo Lua→Sol no referencial alt/az (0 = cima, 90 = direita)
+            double a1 = Math.toRadians(am[0]), a2 = Math.toRadians(as[0]);
+            double dA = Math.toRadians(as[1] - am[1]);
+            double y = Math.sin(dA) * Math.cos(a2);
+            double x = Math.cos(a1) * Math.sin(a2) - Math.sin(a1) * Math.cos(a2) * Math.cos(dA);
+            double brg = Math.atan2(y, x); // 0 = cima, +π/2 = direita
+            t.moonBrightLimbRad = Math.PI / 2 - brg;
+        }
     }
 
     /** Fase da Lua: fração iluminada e se está a crescer. */
@@ -253,6 +308,7 @@ public final class TransitFinder {
         t.satSizeArcsec = satSizeM / 1000.0 / t.rangeKm * ARCSEC;
         t.moonIllumination = base.moonIllumination;
         t.moonWaxing = base.moonWaxing;
+        skyView(t, lat, lon, obsE);
         return t;
     }
 

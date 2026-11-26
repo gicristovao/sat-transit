@@ -39,6 +39,16 @@ public final class Transit {
     public double moonIllumination;
     /** A Lua está a crescer (parte iluminada a oeste do disco, visto do hemisfério norte: lado direito). */
     public boolean moonWaxing;
+    /**
+     * Trajetória da ISS no céu à volta do centro do disco, vista do observador:
+     * pares (dx, dy) em segundos de arco, dx para a direita (azimute crescente), dy para cima.
+     * Pontos por ordem do tempo (sentido do movimento).
+     */
+    public float[] skyTrack;
+    /** Meia largura (″) da vista que contém o disco e a passagem. */
+    public double skyFieldArcsec;
+    /** Direção (rad, 0 = direita, π/2 = cima) do lado iluminado da Lua na vista do céu. */
+    public double moonBrightLimbRad;
     /** Idade do TLE (dias) no momento do trânsito. */
     public double tleAgeDays;
 
