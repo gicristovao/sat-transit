@@ -74,7 +74,7 @@ private const val ARCSEC_PER_RAD = 206264.806
  * t deve ter sido avaliado no ponto de vista (a tua posição ou o pino), com skyTrack.
  */
 @Composable
-fun PreviewScreen(t: Transit, fromPin: Boolean, onBack: () -> Unit) {
+fun PreviewScreen(t: Transit, fromPin: Boolean, isGps: Boolean = true, onBack: () -> Unit) {
     BackHandler(onBack = onBack)
     val context = LocalContext.current
     var settings by remember { mutableStateOf(PreviewSettings.load(context)) }
@@ -125,7 +125,7 @@ fun PreviewScreen(t: Transit, fromPin: Boolean, onBack: () -> Unit) {
 
         // de onde se vê
         val origin = buildString {
-            append(stringResource(if (fromPin) R.string.preview_from_pin else R.string.preview_from_you))
+            append(stringResource(when { fromPin -> R.string.preview_from_pin; isGps -> R.string.preview_from_you; else -> R.string.preview_from_place }))
             append(" · ")
             if (visible) {
                 append(stringResource(R.string.inside_band)); append(" · "); append(stringResource(R.string.pct_from_center, pct))

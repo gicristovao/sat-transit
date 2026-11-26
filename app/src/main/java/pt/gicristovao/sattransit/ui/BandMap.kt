@@ -197,7 +197,7 @@ fun distanceToBandKm(t: Transit, lat: Double, lon: Double): Double {
     return maxOf(0.0, best - half)
 }
 
-private fun pinBitmap(density: Float): Bitmap {
+internal fun pinBitmap(density: Float): Bitmap {
     val w = (30 * density).toInt()
     val h = (40 * density).toInt()
     val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)

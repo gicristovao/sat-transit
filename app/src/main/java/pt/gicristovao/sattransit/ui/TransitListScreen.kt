@@ -83,7 +83,9 @@ object C {
 @Composable
 fun TransitListScreen(vm: MainViewModel, onRequestPermission: () -> Unit) {
     val state by vm.state.collectAsStateWithLifecycle()
-    var otherPlace by remember { mutableStateOf(false) }
+    val otherPlace by vm.otherMode.collectAsStateWithLifecycle()
+    val chosen by vm.chosen.collectAsStateWithLifecycle()
+    var showLocal by remember { mutableStateOf(false) }
     var filter by remember { mutableStateOf<Ephemeris.Body?>(null) }
     val context = LocalContext.current
     val update by vm.update.collectAsStateWithLifecycle()
@@ -96,8 +98,12 @@ fun TransitListScreen(vm: MainViewModel, onRequestPermission: () -> Unit) {
     var selected by remember { mutableStateOf<Transit?>(null) }
     val ready = state as? UiState.Ready
     val sel = selected
+    if (showLocal) {
+        LocalScreen(vm, onBack = { showLocal = false }, onDone = { showLocal = false })
+        return
+    }
     if (sel != null && ready != null) {
-        TransitDetailScreen(sel, ready.place, { la, lo -> vm.evaluateAt(sel, la, lo) }) { selected = null }
+        TransitDetailScreen(sel, ready.place, ready.isGps, { la, lo -> vm.evaluateAt(sel, la, lo) }) { selected = null }
         return
     }
 
@@ -116,18 +122,11 @@ fun TransitListScreen(vm: MainViewModel, onRequestPermission: () -> Unit) {
         Text(stringResource(R.string.upcoming_transits), color = C.Text, fontSize = 30.sp, fontWeight = FontWeight.SemiBold, lineHeight = 33.sp)
         Spacer(Modifier.height(14.dp))
         UpdateBanner(update) { vm.openSheet() }
-        Segmented(left = stringResource(R.string.where_i_am), right = stringResource(R.string.other_place), rightSelected = otherPlace) { otherPlace = it }
-        Spacer(Modifier.height(8.dp))
-
-        if (otherPlace) {
-            Box(Modifier.fillMaxWidth().padding(top = 40.dp), contentAlignment = Alignment.Center) {
-                Text(
-                    stringResource(R.string.other_place_soon),
-                    color = C.Muted, fontSize = 15.sp, textAlign = TextAlign.Center
-                )
-            }
-            return@Column
+        Segmented(left = stringResource(R.string.where_i_am), right = stringResource(R.string.other_place), rightSelected = otherPlace) { other ->
+            if (!other) vm.useHere()
+            else chosen?.let { vm.useOther(it, vm.places.radiusKm) } ?: run { showLocal = true }
         }
+        Spacer(Modifier.height(8.dp))
 
         when (val s = state) {
             is UiState.NeedPermission -> Message(
@@ -145,7 +144,7 @@ fun TransitListScreen(vm: MainViewModel, onRequestPermission: () -> Unit) {
             }
             is UiState.Error -> Message(s.message, stringResource(R.string.try_again)) { onRequestPermission() }
             is UiState.Ready -> {
-                LocationRow(s)
+                if (s.isGps) LocationRow(s) else OtherPlaceRow(s) { showLocal = true }
                 Spacer(Modifier.height(6.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Chip(stringResource(R.string.filter_all), filter == null) { filter = null }
@@ -336,6 +335,27 @@ private fun LocationRow(s: UiState.Ready) {
             stringResource(R.string.location_line, p.name ?: coords, s.radiusKm, s.days),
             color = C.Muted, fontSize = 14.sp
         )
+    }
+}
+
+@Composable
+private fun OtherPlaceRow(s: UiState.Ready, onChange: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().heightIn(min = 44.dp).clip(RoundedCornerShape(12.dp)).border(1.dp, C.Line, RoundedCornerShape(12.dp))
+            .clickable(onClick = onChange).padding(horizontal = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Canvas(Modifier.size(16.dp)) {
+            val w = size.minDimension
+            drawCircle(C.Text, radius = w * 0.3f, center = Offset(w * 0.45f, w * 0.45f), style = Stroke(2.dp.toPx()))
+            drawLine(C.Text, Offset(w * 0.67f, w * 0.67f), Offset(w * 0.95f, w * 0.95f), strokeWidth = 2.dp.toPx())
+        }
+        Spacer(Modifier.size(8.dp))
+        Text(
+            stringResource(R.string.other_line, (s.place.name ?: "").substringBefore(","), s.radiusKm, s.days),
+            color = C.Text, fontSize = 14.sp, maxLines = 1, modifier = Modifier.weight(1f)
+        )
+        Text(stringResource(R.string.change_place), color = C.Amber, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
     }
 }
 

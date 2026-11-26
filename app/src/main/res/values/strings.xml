@@ -119,4 +119,20 @@
     <string name="height_mm">Height (mm)</string>
     <string name="ok">OK</string>
     <string name="cancel">Cancel</string>
+    <string name="search_place">Search place (e.g. Cabo da Roca)</string>
+    <string name="change_place">Change</string>
+    <string name="long_press_place">Long-press to change the place</string>
+    <string name="centerlines_legend">Centre lines for the next %d days</string>
+    <string name="search_radius">Search radius</string>
+    <string name="save_place">+ Save this place</string>
+    <string name="see_transits_here">See transits here</string>
+    <string name="chosen_point">Point chosen on the map</string>
+    <string name="place_saved">Place saved</string>
+    <string name="place_removed">%s removed</string>
+    <string name="other_line">%1$s · %2$d km radius · %3$d days</string>
+    <string name="no_places_found">No places found</string>
+    <string name="place_inside">Place · inside the band</string>
+    <string name="place_outside">Place · %.1f km from the band</string>
+    <string name="preview_from_place">Seen from the chosen place</string>
+    <string name="hold_to_remove">Long-press a saved place to remove it</string>
 </resources>

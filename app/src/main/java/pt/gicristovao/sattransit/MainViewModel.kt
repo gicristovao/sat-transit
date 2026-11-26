@@ -12,6 +12,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import pt.gicristovao.sattransit.data.LocationProvider
 import pt.gicristovao.sattransit.data.Place
+import pt.gicristovao.sattransit.data.PlaceSearch
+import pt.gicristovao.sattransit.data.PlaceStore
+import pt.gicristovao.sattransit.data.SavedPlace
 import pt.gicristovao.sattransit.data.TleRepository
 import pt.gicristovao.sattransit.data.Updater
 import java.io.File
@@ -28,6 +31,8 @@ sealed interface UiState {
         val tleEpochMillis: Long,
         val radiusKm: Int,
         val days: Int,
+        /** true = posição GPS; false = local escolhido. */
+        val isGps: Boolean = true,
     ) : UiState
     data class Error(val message: String) : UiState
 }
@@ -47,7 +52,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     companion object {
         const val ISS = 25544
         const val ISS_SIZE_M = 109.0
-        const val RADIUS_KM = 100
         const val DAYS = 14
     }
 
@@ -58,6 +62,49 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val locations = LocationProvider(app)
     private var ephemeris: Ephemeris? = null
     private var lastTle: pt.gicristovao.sattransit.engine.Tle? = null
+
+    val places = PlaceStore(app)
+    val placeSearch = PlaceSearch(app)
+    private val _otherMode = MutableStateFlow(false)
+    val otherMode: StateFlow<Boolean> = _otherMode
+    private val _chosen = MutableStateFlow(places.chosen)
+    val chosen: StateFlow<SavedPlace?> = _chosen
+    /** Última posição GPS conhecida (para centrar o mapa do outro local). */
+    var lastGps: Place? = null
+        private set
+
+    fun useHere() {
+        if (!_otherMode.value) return
+        _otherMode.value = false
+        refresh()
+    }
+
+    /** Passa a mostrar os trânsitos de um local escolhido, com o raio indicado. */
+    fun useOther(p: SavedPlace, radiusKm: Int) {
+        places.chosen = p
+        places.radiusKm = radiusKm
+        _chosen.value = p
+        _otherMode.value = true
+        refresh()
+    }
+
+    private suspend fun ensureData(force: Boolean): Pair<pt.gicristovao.sattransit.engine.Tle, Ephemeris> {
+        val tle = if (lastTle == null || force) tleRepo.get(ISS, force).tle.also { lastTle = it } else lastTle!!
+        val eph = ephemeris ?: withContext(Dispatchers.IO) {
+            getApplication<Application>().assets.open("ephem_sun_moon.bin").use { Ephemeris(it) }
+        }.also { ephemeris = it }
+        return tle to eph
+    }
+
+    /** Trânsitos à volta de um ponto (para desenhar as linhas centrais no mapa do outro local). */
+    suspend fun transitsAt(lat: Double, lon: Double, radiusKm: Int): List<Transit> {
+        val (tle, eph) = ensureData(false)
+        return withContext(Dispatchers.Default) {
+            TransitFinder(tle, eph, ISS_SIZE_M).search(
+                lat, lon, 0.0, radiusKm.toDouble(), Transit.millisToJd(System.currentTimeMillis()), DAYS.toDouble()
+            ) { isActive }
+        }
+    }
 
     /** Avalia um trânsito visto de outro ponto (o pino do mapa). */
     suspend fun evaluateAt(t: Transit, lat: Double, lon: Double): Transit? {
@@ -148,23 +195,24 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         job?.cancel()
         job = viewModelScope.launch {
             try {
-                _state.value = UiState.Loading(str(R.string.getting_position), null)
-                val place = locations.current()
-                    ?: throw IllegalStateException(str(R.string.no_position))
+                val other = _otherMode.value
+                val chosenPlace = _chosen.value
+                val radius = places.radiusKm
+                val place = if (other && chosenPlace != null) {
+                    Place(chosenPlace.lat, chosenPlace.lon, 0.0, chosenPlace.name)
+                } else {
+                    _state.value = UiState.Loading(str(R.string.getting_position), null)
+                    (locations.current() ?: throw IllegalStateException(str(R.string.no_position))).also { lastGps = it }
+                }
 
                 _state.value = UiState.Loading(str(R.string.getting_orbit), null)
-                val tle = tleRepo.get(ISS, force)
-                lastTle = tle.tle
-
-                val eph = ephemeris ?: withContext(Dispatchers.IO) {
-                    getApplication<Application>().assets.open("ephem_sun_moon.bin").use { Ephemeris(it) }
-                }.also { ephemeris = it }
+                val (tle0, eph) = ensureData(force)
 
                 _state.value = UiState.Loading(str(R.string.computing), 0f)
                 val transits = withContext(Dispatchers.Default) {
-                    val finder = TransitFinder(tle.tle, eph, ISS_SIZE_M)
+                    val finder = TransitFinder(tle0, eph, ISS_SIZE_M)
                     finder.search(
-                        place.lat, place.lon, place.altitudeM, RADIUS_KM.toDouble(),
+                        place.lat, place.lon, place.altitudeM, radius.toDouble(),
                         Transit.millisToJd(System.currentTimeMillis()), DAYS.toDouble()
                     ) { f ->
                         _state.value = UiState.Loading(str(R.string.computing), f.toFloat())
@@ -172,7 +220,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     }
                 }
                 _state.value = UiState.Ready(
-                    place, transits, Transit.jdToMillis(tle.tle.epochJd), RADIUS_KM, DAYS
+                    place, transits, Transit.jdToMillis(tle0.epochJd), radius, DAYS, isGps = !(other && chosenPlace != null)
                 )
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e

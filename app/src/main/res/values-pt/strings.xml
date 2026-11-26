@@ -113,4 +113,20 @@
     <string name="height_mm">Altura (mm)</string>
     <string name="ok">OK</string>
     <string name="cancel">Cancelar</string>
+    <string name="search_place">Pesquisar local (ex.: Cabo da Roca)</string>
+    <string name="change_place">Mudar</string>
+    <string name="long_press_place">Mantém premido para mudar o local</string>
+    <string name="centerlines_legend">Linhas centrais dos próximos %d dias</string>
+    <string name="search_radius">Raio de pesquisa</string>
+    <string name="save_place">+ Guardar este local</string>
+    <string name="see_transits_here">Ver trânsitos aqui</string>
+    <string name="chosen_point">Ponto escolhido no mapa</string>
+    <string name="place_saved">Local guardado</string>
+    <string name="place_removed">%s removido</string>
+    <string name="other_line">%1$s · raio de %2$d km · %3$d dias</string>
+    <string name="no_places_found">Nenhum local encontrado</string>
+    <string name="place_inside">Local · dentro da faixa</string>
+    <string name="place_outside">Local · a %.1f km da faixa</string>
+    <string name="preview_from_place">Vista do local escolhido</string>
+    <string name="hold_to_remove">Mantém premido um local guardado para o apagar</string>
 </resources>

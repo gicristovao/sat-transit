@@ -64,6 +64,7 @@ import java.util.Locale
 fun TransitDetailScreen(
     t: Transit,
     place: Place,
+    isGps: Boolean,
     evaluate: suspend (Double, Double) -> Transit?,
     onBack: () -> Unit,
 ) {
@@ -132,7 +133,7 @@ fun TransitDetailScreen(
                     }
                 }
             }
-            MapLegend(t, visible)
+            MapLegend(t, visible, isGps)
         }
 
         val durLabel = stringResource(if (visible) R.string.duration_here else R.string.duration_center)
@@ -185,7 +186,7 @@ fun TransitDetailScreen(
         Spacer(Modifier.height(8.dp))
     }
     if (mapOpen) ExpandedMap(t, place, evaluate, onPreview = { preview = it to true }) { mapOpen = false }
-    preview?.let { (pt, fromPin) -> PreviewScreen(pt, fromPin) { preview = null } }
+    preview?.let { (pt, fromPin) -> PreviewScreen(pt, fromPin, isGps) { preview = null } }
     }
 }
 
@@ -271,7 +272,7 @@ private fun ExpandedMap(t: Transit, place: Place, evaluate: suspend (Double, Dou
 
 /** Legenda por baixo do mapa: nada fica por cima da tua posição. */
 @Composable
-private fun MapLegend(t: Transit, visible: Boolean) {
+private fun MapLegend(t: Transit, visible: Boolean, isGps: Boolean) {
     val sun = t.body == Ephemeris.Body.SUN
     Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(horizontal = 4.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -281,7 +282,12 @@ private fun MapLegend(t: Transit, visible: Boolean) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             Box(Modifier.size(12.dp).clip(RoundedCornerShape(6.dp)).background(Color(0xFF2F6FEB)).border(2.dp, Color.White, RoundedCornerShape(6.dp)))
             Text(
-                if (visible) stringResource(R.string.you_inside) else stringResource(R.string.you_outside, t.distanceToBandKm()),
+                when {
+                    isGps && visible -> stringResource(R.string.you_inside)
+                    isGps -> stringResource(R.string.you_outside, t.distanceToBandKm())
+                    visible -> stringResource(R.string.place_inside)
+                    else -> stringResource(R.string.place_outside, t.distanceToBandKm())
+                },
                 color = C.Muted, fontSize = 12.sp
             )
         }
