@@ -16,6 +16,10 @@ android {
         targetSdk = 35
         versionCode = buildNumber
         versionName = "0.1.$buildNumber"
+        ndk {
+            // Só telemóveis de 64 bits por agora (APK mais pequeno). Alargar antes de publicar.
+            abiFilters += listOf("arm64-v8a")
+        }
     }
 
     signingConfigs {
@@ -59,5 +63,6 @@ dependencies {
     implementation("androidx.compose.foundation:foundation")
     implementation("androidx.compose.material3:material3")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
+    implementation("org.maplibre.gl:android-sdk:11.5.2")
     testImplementation("junit:junit:4.13.2")
 }

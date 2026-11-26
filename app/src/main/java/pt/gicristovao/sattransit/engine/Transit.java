@@ -19,6 +19,10 @@ public final class Transit {
     public double centerlineDistanceKm;
     /** Largura da faixa de visibilidade no chão (km). */
     public double bandWidthKm;
+    /** Meia largura da faixa para cada lado da linha central (km): +90° e −90° em relação ao rumo. */
+    public double halfWidthRightKm, halfWidthLeftKm;
+    /** Lado da linha central onde está o observador: +1 direita, −1 esquerda (em relação ao rumo). */
+    public int observerSide = 1;
     /** Distância observador–satélite (km). */
     public double rangeKm;
     /** Tamanho angular do satélite (″). */
@@ -45,7 +49,8 @@ public final class Transit {
 
     /** Distância do observador ao ponto mais próximo onde o trânsito é visível (0 se já estiver dentro). */
     public double distanceToBandKm() {
-        return Math.max(0.0, centerlineDistanceKm - bandWidthKm / 2.0);
+        double half = observerSide >= 0 ? halfWidthRightKm : halfWidthLeftKm;
+        return Math.max(0.0, centerlineDistanceKm - half);
     }
 
     public static long jdToMillis(double jd) {

@@ -88,6 +88,14 @@ fun TransitListScreen(vm: MainViewModel, onRequestPermission: () -> Unit) {
         toast?.let { Toast.makeText(context, it, Toast.LENGTH_LONG).show(); vm.toastShown() }
     }
 
+    var selected by remember { mutableStateOf<Transit?>(null) }
+    val ready = state as? UiState.Ready
+    val sel = selected
+    if (sel != null && ready != null) {
+        TransitDetailScreen(sel, ready.place) { selected = null }
+        return
+    }
+
     Box(Modifier.fillMaxSize()) {
     Column(
         Modifier
@@ -156,9 +164,7 @@ fun TransitListScreen(vm: MainViewModel, onRequestPermission: () -> Unit) {
                         }
                     }
                     items(list) { t ->
-                        TransitCard(t) {
-                            Toast.makeText(context, "O detalhe do trânsito chega na próxima versão.", Toast.LENGTH_SHORT).show()
-                        }
+                        TransitCard(t) { selected = t }
                     }
                     item {
                         val h = (System.currentTimeMillis() - s.tleEpochMillis) / 3_600_000.0
@@ -405,7 +411,7 @@ private fun BodyIcon(t: Transit) {
 }
 
 @Composable
-private fun SunIcon() {
+fun SunIcon() {
     Canvas(Modifier.size(28.dp)) {
         val w = size.minDimension
         val st = Stroke(width = 2.dp.toPx())

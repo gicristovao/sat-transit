@@ -157,6 +157,7 @@ public final class TransitFinder {
         t.jdCenter = jdC + (u - 0.5) * SEC;
         double bearing = Math.toDegrees(Math.atan2(vx, vy));
         t.trackBearingDeg = bearing < 0 ? bearing + 360 : bearing;
+        t.observerSide = (-fx * vy + fy * vx) >= 0 ? 1 : -1;
 
         // 2) vista do observador
         double[] obsE = new double[3];
@@ -189,7 +190,9 @@ public final class TransitFinder {
         double[] cMin = minSeparation(body, t.jdCenter, 1.0, 0.01, cE);
         t.durationCenterS = duration(body, cMin[1], cE);
         double perp = Math.toRadians(t.trackBearingDeg + 90.0);
-        t.bandWidthKm = halfWidth(body, t, perp, 1) + halfWidth(body, t, perp, -1);
+        t.halfWidthRightKm = halfWidth(body, t, perp, 1);
+        t.halfWidthLeftKm = halfWidth(body, t, perp, -1);
+        t.bandWidthKm = t.halfWidthRightKm + t.halfWidthLeftKm;
 
         // 4) linha central para o mapa (±90 s, passo 1 s)
         List<Double> pts = new ArrayList<>();
