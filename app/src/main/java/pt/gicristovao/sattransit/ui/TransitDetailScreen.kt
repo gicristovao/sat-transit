@@ -111,8 +111,26 @@ fun TransitDetailScreen(
 
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Box(Modifier.fillMaxWidth().height(260.dp).clip(RoundedCornerShape(16.dp)).border(1.dp, C.CardLine, RoundedCornerShape(16.dp))) {
-                BandMap(t, place.lat, place.lon, Modifier.fillMaxSize())
+                BandMap(t, place.lat, place.lon, Modifier.fillMaxSize(), topPaddingDp = 52)
                 Box(Modifier.matchParentSize().clickable { mapOpen = true })
+                // ícone de ampliar: o mapa abre em grande ao tocar
+                Box(
+                    Modifier.align(Alignment.TopEnd).padding(8.dp).size(36.dp).clip(RoundedCornerShape(10.dp))
+                        .background(C.Ink.copy(alpha = 0.85f)).clickable { mapOpen = true },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Canvas(Modifier.size(18.dp)) {
+                        val w = size.minDimension
+                        val sw = 2.dp.toPx()
+                        val a = w * 0.38f
+                        drawLine(C.Text, Offset(w * 0.6f, w * 0.4f), Offset(w, 0f), strokeWidth = sw)
+                        drawLine(C.Text, Offset(w - a, 0f), Offset(w, 0f), strokeWidth = sw)
+                        drawLine(C.Text, Offset(w, 0f), Offset(w, a), strokeWidth = sw)
+                        drawLine(C.Text, Offset(w * 0.4f, w * 0.6f), Offset(0f, w), strokeWidth = sw)
+                        drawLine(C.Text, Offset(0f, w - a), Offset(0f, w), strokeWidth = sw)
+                        drawLine(C.Text, Offset(0f, w), Offset(a, w), strokeWidth = sw)
+                    }
+                }
             }
             MapLegend(t, visible)
         }
@@ -164,11 +182,6 @@ fun TransitDetailScreen(
             colors = ButtonDefaults.buttonColors(containerColor = C.Amber, contentColor = C.Ink),
             shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)
         ) { Text(stringResource(R.string.preview), fontWeight = FontWeight.SemiBold, fontSize = 16.sp) }
-        OutlinedButton(
-            onClick = { mapOpen = true },
-            border = BorderStroke(1.dp, C.Line), colors = ButtonDefaults.outlinedButtonColors(contentColor = C.Text),
-            shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)
-        ) { Text(stringResource(R.string.choose_on_map), fontWeight = FontWeight.Medium, fontSize = 16.sp) }
         Spacer(Modifier.height(8.dp))
     }
     if (mapOpen) ExpandedMap(t, place, evaluate, onPreview = { preview = it to true }) { mapOpen = false }
