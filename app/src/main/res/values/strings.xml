@@ -78,4 +78,13 @@
         <item>N</item><item>NNE</item><item>NE</item><item>ENE</item><item>E</item><item>ESE</item><item>SE</item><item>SSE</item>
         <item>S</item><item>SSW</item><item>SW</item><item>WSW</item><item>W</item><item>WNW</item><item>NW</item><item>NNW</item>
     </string-array>
+    <string name="map_hint">Long-press to move the pin</string>
+    <string name="pin_inside">Pin inside the band</string>
+    <string name="pin_outside">Pin outside the band</string>
+    <string name="pin_info_inside">%1$s · %2$.2f s · %3$d%% from centre</string>
+    <string name="pin_info_outside">%.1f km from the band · the ISS passes beside the disc</string>
+    <string name="navigate_pin">Navigate to pin</string>
+    <string name="choose_on_map">Choose spot on map</string>
+    <string name="close">Close</string>
+    <string name="calculating">Calculating…</string>
 </resources>

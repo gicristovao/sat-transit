@@ -222,6 +222,40 @@ public final class TransitFinder {
         t.moonWaxing = ra < 180;
     }
 
+    /**
+     * Avalia um trânsito já encontrado visto de outro ponto (ex.: o pino no mapa).
+     * Preenche hora, separação mínima, raio do disco, duração, distância, elevação e azimute.
+     */
+    public Transit evaluateAt(Transit base, double lat, double lon, double hM) {
+        double[] obsE = new double[3];
+        Geo.geodeticToEcef(lat, lon, hM, obsE);
+        double[] coarse = minSeparation(base.body, base.jdCenter, 60.0, 0.1, obsE);
+        double[] fine = minSeparation(base.body, coarse[1], 0.2, 0.002, obsE);
+        Transit t = new Transit();
+        t.body = base.body;
+        t.jdCenter = base.jdCenter;
+        t.jdObserver = fine[1];
+        double[] rad = new double[1];
+        double sep = separation(base.body, t.jdObserver, obsE, rad);
+        t.minSeparationArcsec = sep * ARCSEC;
+        t.bodyRadiusArcsec = rad[0] * ARCSEC;
+        t.durationObserverS = duration(base.body, t.jdObserver, obsE);
+        double g = Geo.gmst(t.jdObserver);
+        Geo.ecefToTeme(obsE, g, obsT);
+        sgp4.positionAt(t.jdObserver, satT);
+        for (int k = 0; k < 3; k++) s[k] = satT[k] - obsT[k];
+        t.rangeKm = norm(s);
+        double[] dE = new double[3];
+        Geo.temeToEcef(s, g, dE);
+        double[] aa = Geo.altAz(lat, lon, dE);
+        t.altitudeDeg = aa[0];
+        t.azimuthDeg = aa[1];
+        t.satSizeArcsec = satSizeM / 1000.0 / t.rangeKm * ARCSEC;
+        t.moonIllumination = base.moonIllumination;
+        t.moonWaxing = base.moonWaxing;
+        return t;
+    }
+
     /** Duração (s) em que o satélite está sobre o disco, visto de obsE. */
     private double duration(Ephemeris.Body body, double jdMin, double[] obsE) {
         double[] rad = new double[1];

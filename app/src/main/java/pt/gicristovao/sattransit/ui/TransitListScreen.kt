@@ -95,7 +95,7 @@ fun TransitListScreen(vm: MainViewModel, onRequestPermission: () -> Unit) {
     val ready = state as? UiState.Ready
     val sel = selected
     if (sel != null && ready != null) {
-        TransitDetailScreen(sel, ready.place) { selected = null }
+        TransitDetailScreen(sel, ready.place, { la, lo -> vm.evaluateAt(sel, la, lo) }) { selected = null }
         return
     }
 

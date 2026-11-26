@@ -72,4 +72,13 @@
         <item>N</item><item>NNE</item><item>NE</item><item>ENE</item><item>E</item><item>ESE</item><item>SE</item><item>SSE</item>
         <item>S</item><item>SSO</item><item>SO</item><item>OSO</item><item>O</item><item>ONO</item><item>NO</item><item>NNO</item>
     </string-array>
+    <string name="map_hint">Mantém premido para mover o pino</string>
+    <string name="pin_inside">Pino dentro da faixa</string>
+    <string name="pin_outside">Pino fora da faixa</string>
+    <string name="pin_info_inside">%1$s · %2$.2f s · a %3$d%% do centro</string>
+    <string name="pin_info_outside">a %.1f km da faixa · a ISS passa ao lado</string>
+    <string name="navigate_pin">Navegar até ao pino</string>
+    <string name="choose_on_map">Escolher local no mapa</string>
+    <string name="close">Fechar</string>
+    <string name="calculating">A calcular…</string>
 </resources>

@@ -57,6 +57,16 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val tleRepo = TleRepository(app)
     private val locations = LocationProvider(app)
     private var ephemeris: Ephemeris? = null
+    private var lastTle: pt.gicristovao.sattransit.engine.Tle? = null
+
+    /** Avalia um trânsito visto de outro ponto (o pino do mapa). */
+    suspend fun evaluateAt(t: Transit, lat: Double, lon: Double): Transit? {
+        val tle = lastTle ?: return null
+        val eph = ephemeris ?: return null
+        return withContext(Dispatchers.Default) {
+            TransitFinder(tle, eph, ISS_SIZE_M).evaluateAt(t, lat, lon, 0.0)
+        }
+    }
     private var job: Job? = null
 
     val updater = Updater(app)
@@ -144,6 +154,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
                 _state.value = UiState.Loading(str(R.string.getting_orbit), null)
                 val tle = tleRepo.get(ISS, force)
+                lastTle = tle.tle
 
                 val eph = ephemeris ?: withContext(Dispatchers.IO) {
                     getApplication<Application>().assets.open("ephem_sun_moon.bin").use { Ephemeris(it) }

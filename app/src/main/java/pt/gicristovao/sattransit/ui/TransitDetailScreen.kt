@@ -33,6 +33,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -47,6 +48,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import pt.gicristovao.sattransit.data.Place
+import org.maplibre.android.geometry.LatLng
 import pt.gicristovao.sattransit.R
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.stringArrayResource
@@ -59,8 +61,15 @@ import java.util.Locale
 
 
 @Composable
-fun TransitDetailScreen(t: Transit, place: Place, onBack: () -> Unit) {
+fun TransitDetailScreen(
+    t: Transit,
+    place: Place,
+    evaluate: suspend (Double, Double) -> Transit?,
+    onBack: () -> Unit,
+) {
     BackHandler(onBack = onBack)
+    var mapOpen by remember { mutableStateOf(false) }
+    BackHandler(enabled = mapOpen) { mapOpen = false }
     val context = LocalContext.current
     val sun = t.body == Ephemeris.Body.SUN
     val visible = t.visibleFromObserver()
@@ -74,6 +83,7 @@ fun TransitDetailScreen(t: Transit, place: Place, onBack: () -> Unit) {
     val dec = DecimalFormatSymbols.getInstance().decimalSeparator
     val hms = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(date) + dec + ((whenMs % 1000) / 100)
 
+    Box(Modifier.fillMaxSize()) {
     Column(
         Modifier.fillMaxSize().background(C.Ink).statusBarsPadding().navigationBarsPadding()
             .verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 12.dp),
@@ -100,6 +110,7 @@ fun TransitDetailScreen(t: Transit, place: Place, onBack: () -> Unit) {
 
         Box(Modifier.fillMaxWidth().height(260.dp).clip(RoundedCornerShape(16.dp)).border(1.dp, C.CardLine, RoundedCornerShape(16.dp))) {
             BandMap(t, place.lat, place.lon, Modifier.fillMaxSize())
+            Box(Modifier.matchParentSize().clickable { mapOpen = true })
             Text(
                 stringResource(R.string.band_width, t.bandWidthKm),
                 color = if (sun) C.Amber else C.Moon, fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
@@ -161,14 +172,93 @@ fun TransitDetailScreen(t: Transit, place: Place, onBack: () -> Unit) {
             shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)
         ) { Text(stringResource(R.string.preview), fontWeight = FontWeight.SemiBold, fontSize = 16.sp) }
         OutlinedButton(
-            onClick = {
-                val uri = Uri.parse(String.format(Locale.US, "https://www.google.com/maps/dir/?api=1&destination=%.6f,%.6f", t.centerLat, t.centerLon))
-                runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, uri)) }
-            },
+            onClick = { mapOpen = true },
             border = BorderStroke(1.dp, C.Line), colors = ButtonDefaults.outlinedButtonColors(contentColor = C.Text),
             shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)
-        ) { Text(stringResource(R.string.navigate_center), fontWeight = FontWeight.Medium, fontSize = 16.sp) }
+        ) { Text(stringResource(R.string.choose_on_map), fontWeight = FontWeight.Medium, fontSize = 16.sp) }
         Spacer(Modifier.height(8.dp))
+    }
+    if (mapOpen) ExpandedMap(t, place, evaluate) { mapOpen = false }
+    }
+}
+
+@Composable
+private fun ExpandedMap(t: Transit, place: Place, evaluate: suspend (Double, Double) -> Transit?, onClose: () -> Unit) {
+    val context = LocalContext.current
+    val sun = t.body == Ephemeris.Body.SUN
+    var pin by remember { mutableStateOf(LatLng(t.centerLat, t.centerLon)) }
+    var eval by remember { mutableStateOf<Transit?>(null) }
+    var busy by remember { mutableStateOf(false) }
+    LaunchedEffect(pin) {
+        busy = true
+        eval = evaluate(pin.latitude, pin.longitude)
+        busy = false
+    }
+    Column(Modifier.fillMaxSize()) {
+        Box(Modifier.fillMaxWidth().height(96.dp).background(Color(0xB805070B)).clickable(onClick = onClose))
+        Column(
+            Modifier.fillMaxWidth().weight(1f).clip(RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp))
+                .background(C.Surface).navigationBarsPadding()
+        ) {
+            Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 12.dp, top = 10.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(R.string.band_width, t.bandWidthKm), color = C.Text, fontSize = 15.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                Box(
+                    Modifier.size(44.dp).clip(RoundedCornerShape(12.dp)).border(1.dp, C.Line, RoundedCornerShape(12.dp)).clickable(onClick = onClose),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Canvas(Modifier.size(16.dp)) {
+                        val w = size.minDimension
+                        drawLine(C.Text, Offset(0f, 0f), Offset(w, w), strokeWidth = 2.dp.toPx())
+                        drawLine(C.Text, Offset(w, 0f), Offset(0f, w), strokeWidth = 2.dp.toPx())
+                    }
+                }
+            }
+            Box(Modifier.fillMaxWidth().weight(1f)) {
+                BandMap(t, place.lat, place.lon, Modifier.fillMaxSize(), interactive = true, pin = pin, onLongPress = { pin = it })
+                Text(
+                    stringResource(R.string.map_hint), color = C.Muted, fontSize = 12.sp,
+                    modifier = Modifier.padding(12.dp).clip(RoundedCornerShape(6.dp)).background(C.Ink).padding(horizontal = 8.dp, vertical = 4.dp)
+                )
+            }
+            Column(Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 14.dp, bottom = 20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                val e = eval
+                val inside = e != null && e.visibleFromObserver()
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Box(Modifier.size(10.dp).clip(RoundedCornerShape(5.dp)).background(if (inside) (if (sun) C.Amber else C.Moon) else C.Faint))
+                    Text(
+                        when { busy || e == null -> stringResource(R.string.calculating); inside -> stringResource(R.string.pin_inside); else -> stringResource(R.string.pin_outside) },
+                        color = C.Text, fontSize = 15.sp, fontWeight = FontWeight.SemiBold
+                    )
+                }
+                if (e != null && !busy) {
+                    val info = if (inside) {
+                        val ms = Transit.jdToMillis(e.jdObserver)
+                        val hms = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date(ms)) +
+                            DecimalFormatSymbols.getInstance().decimalSeparator + ((ms % 1000) / 100)
+                        val pct = (e.minSeparationArcsec / e.bodyRadiusArcsec * 100).toInt()
+                        stringResource(R.string.pin_info_inside, hms, e.durationObserverS, pct)
+                    } else {
+                        stringResource(R.string.pin_info_outside, distanceToBandKm(t, pin.latitude, pin.longitude))
+                    }
+                    Text(info, color = C.Muted, fontSize = 13.sp, fontFamily = FontFamily.Monospace)
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(
+                        onClick = {
+                            val uri = Uri.parse(String.format(Locale.US, "https://www.google.com/maps/dir/?api=1&destination=%.6f,%.6f", pin.latitude, pin.longitude))
+                            runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, uri)) }
+                        },
+                        border = BorderStroke(1.dp, C.Line), colors = ButtonDefaults.outlinedButtonColors(contentColor = C.Text),
+                        shape = RoundedCornerShape(14.dp), modifier = Modifier.weight(1f).heightIn(min = 52.dp)
+                    ) { Text(stringResource(R.string.navigate_pin), fontWeight = FontWeight.Medium, fontSize = 15.sp) }
+                    Button(
+                        onClick = { Toast.makeText(context, context.getString(R.string.preview_soon), Toast.LENGTH_SHORT).show() },
+                        colors = ButtonDefaults.buttonColors(containerColor = C.Amber, contentColor = C.Ink),
+                        shape = RoundedCornerShape(14.dp), modifier = Modifier.weight(1f).heightIn(min = 52.dp)
+                    ) { Text(stringResource(R.string.preview), fontWeight = FontWeight.SemiBold, fontSize = 15.sp) }
+                }
+            }
+        }
     }
 }
 
