@@ -31,6 +31,10 @@ public final class Transit {
     public double trackBearingDeg;
     /** Linha central (lat/lon alternados) para desenhar em mapa. */
     public double[] centerline;
+    /** Fração iluminada da Lua (0 = nova, 1 = cheia); só para trânsitos lunares. */
+    public double moonIllumination;
+    /** A Lua está a crescer (parte iluminada a oeste do disco, visto do hemisfério norte: lado direito). */
+    public boolean moonWaxing;
     /** Idade do TLE (dias) no momento do trânsito. */
     public double tleAgeDays;
 

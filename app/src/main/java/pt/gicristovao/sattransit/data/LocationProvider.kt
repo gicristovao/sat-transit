@@ -23,8 +23,11 @@ class LocationProvider(private val context: Context) {
         val lm = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
         val providers = listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER)
             .filter { runCatching { lm.isProviderEnabled(it) }.getOrDefault(false) }
-        var loc: Location? = null
-        for (p in providers) {
+        // Uma posição com menos de 10 min e precisão melhor que 500 m serve (a faixa de visibilidade tem vários km).
+        var loc: Location? = providers.mapNotNull { runCatching { lm.getLastKnownLocation(it) }.getOrNull() }
+            .filter { System.currentTimeMillis() - it.time < 10 * 60_000 && it.hasAccuracy() && it.accuracy < 500f }
+            .maxByOrNull { it.time }
+        if (loc == null) for (p in providers) {
             loc = withTimeoutOrNull(15_000) { fresh(lm, p) }
             if (loc != null) break
         }

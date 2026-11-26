@@ -199,7 +199,23 @@ public final class TransitFinder {
         t.centerline = new double[pts.size()];
         for (int i = 0; i < pts.size(); i++) t.centerline[i] = pts.get(i);
         t.tleAgeDays = t.jdObserver - epochJd;
+        if (body == Ephemeris.Body.MOON) moonPhase(t);
         return t;
+    }
+
+    /** Fase da Lua: fração iluminada e se está a crescer. */
+    private void moonPhase(Transit t) {
+        double[] m = new double[3], sn = new double[3];
+        eph.position(Ephemeris.Body.MOON, t.jdObserver, m);
+        eph.position(Ephemeris.Body.SUN, t.jdObserver, sn);
+        double[] toSun = {sn[0] - m[0], sn[1] - m[1], sn[2] - m[2]};
+        double[] toEarth = {-m[0], -m[1], -m[2]};
+        double phaseAngle = Geo.angle(toSun, toEarth);
+        t.moonIllumination = (1 + Math.cos(phaseAngle)) / 2;
+        double ra = Math.atan2(m[1], m[0]) - Math.atan2(sn[1], sn[0]);
+        ra = Math.toDegrees(ra) % 360;
+        if (ra < 0) ra += 360;
+        t.moonWaxing = ra < 180;
     }
 
     /** Duração (s) em que o satélite está sobre o disco, visto de obsE. */

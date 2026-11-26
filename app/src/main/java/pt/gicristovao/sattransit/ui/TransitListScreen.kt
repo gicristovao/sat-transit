@@ -40,6 +40,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -375,7 +376,7 @@ private fun TransitCard(t: Transit, onClick: () -> Unit) {
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            BodyIcon(sun)
+            BodyIcon(t)
             Spacer(Modifier.size(10.dp))
             Text("${if (sun) "Sol" else "Lua"} · $day", color = C.Text, fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.weight(1f))
@@ -398,27 +399,57 @@ private fun TransitCard(t: Transit, onClick: () -> Unit) {
 private fun Meta(s: String) = Text(s, color = C.Muted, fontSize = 13.sp)
 
 @Composable
-private fun BodyIcon(sun: Boolean) {
+private fun BodyIcon(t: Transit) {
+    if (t.body == Ephemeris.Body.SUN) SunIcon() else MoonPhaseIcon(t.moonIllumination.toFloat(), t.moonWaxing)
+}
+
+@Composable
+private fun SunIcon() {
     Canvas(Modifier.size(28.dp)) {
         val w = size.minDimension
         val st = Stroke(width = 2.dp.toPx())
-        if (sun) {
-            val c = Offset(w / 2, w / 2)
-            drawCircle(C.Amber, radius = w * 0.19f, center = c, style = st)
-            for (i in 0 until 8) {
-                val a = Math.toRadians(i * 45.0)
-                val r1 = w * 0.32f; val r2 = w * 0.44f
-                drawLine(C.Amber,
-                    Offset(c.x + r1 * cos(a).toFloat(), c.y + r1 * sin(a).toFloat()),
-                    Offset(c.x + r2 * cos(a).toFloat(), c.y + r2 * sin(a).toFloat()),
-                    strokeWidth = 2.dp.toPx())
-            }
-        } else {
-            drawCircle(C.Moon, radius = w * 0.34f, style = st)
-            drawCircle(C.Surface, radius = w * 0.30f, center = Offset(w * 0.64f, w * 0.38f))
+        val c = Offset(w / 2, w / 2)
+        drawCircle(C.Amber, radius = w * 0.19f, center = c, style = st)
+        for (i in 0 until 8) {
+            val a = Math.toRadians(i * 45.0)
+            val r1 = w * 0.32f; val r2 = w * 0.44f
+            drawLine(C.Amber,
+                Offset(c.x + r1 * cos(a).toFloat(), c.y + r1 * sin(a).toFloat()),
+                Offset(c.x + r2 * cos(a).toFloat(), c.y + r2 * sin(a).toFloat()),
+                strokeWidth = 2.dp.toPx())
         }
     }
 }
+
+/** Lua com a fase real: illum 0 = nova, 1 = cheia; a crescer = iluminada à direita (hemisfério norte). */
+@Composable
+fun MoonPhaseIcon(illum: Float, waxing: Boolean, sizeDp: Int = 28) {
+    Canvas(Modifier.size(sizeDp.dp)) {
+        val w = size.minDimension
+        val r = w * 0.375f
+        val cx = w / 2; val cy = w / 2
+        drawCircle(MoonDark, radius = r, center = Offset(cx, cy))
+        drawCircle(MoonEdge, radius = r, center = Offset(cx, cy), style = Stroke(width = 1.dp.toPx()))
+        val k = illum.coerceIn(0f, 1f)
+        if (k < 0.01f) return@Canvas
+        if (k > 0.99f) { drawCircle(MoonLit, radius = r, center = Offset(cx, cy)); return@Canvas }
+        val e = r * kotlin.math.abs(1f - 2f * k)
+        val path = androidx.compose.ui.graphics.Path().apply {
+            arcTo(androidx.compose.ui.geometry.Rect(cx - r, cy - r, cx + r, cy + r), -90f, 180f, true)
+            arcTo(androidx.compose.ui.geometry.Rect(cx - e, cy - r, cx + e, cy + r), 90f, if (k < 0.5f) -180f else 180f, false)
+            close()
+        }
+        if (waxing) {
+            drawPath(path, MoonLit)
+        } else {
+            scale(-1f, 1f, pivot = Offset(cx, cy)) { drawPath(path, MoonLit) }
+        }
+    }
+}
+
+private val MoonDark = Color(0xFF232A38)
+private val MoonEdge = Color(0xFF3A4256)
+private val MoonLit = Color(0xFFC9D3E6)
 
 @Composable
 private fun Message(text: String, action: String, onClick: () -> Unit) {
