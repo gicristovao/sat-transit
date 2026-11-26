@@ -108,20 +108,12 @@ fun TransitDetailScreen(
             }
         }
 
-        Box(Modifier.fillMaxWidth().height(260.dp).clip(RoundedCornerShape(16.dp)).border(1.dp, C.CardLine, RoundedCornerShape(16.dp))) {
-            BandMap(t, place.lat, place.lon, Modifier.fillMaxSize())
-            Box(Modifier.matchParentSize().clickable { mapOpen = true })
-            Text(
-                stringResource(R.string.band_width, t.bandWidthKm),
-                color = if (sun) C.Amber else C.Moon, fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.padding(10.dp).clip(RoundedCornerShape(6.dp)).background(C.Ink).padding(horizontal = 8.dp, vertical = 4.dp)
-            )
-            Text(
-                if (visible) stringResource(R.string.you_inside) else stringResource(R.string.you_outside, t.distanceToBandKm()),
-                color = C.Text, fontSize = 12.sp,
-                modifier = Modifier.align(Alignment.BottomStart).padding(start = 10.dp, bottom = 26.dp)
-                    .clip(RoundedCornerShape(6.dp)).background(C.Ink).padding(horizontal = 8.dp, vertical = 4.dp)
-            )
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Box(Modifier.fillMaxWidth().height(260.dp).clip(RoundedCornerShape(16.dp)).border(1.dp, C.CardLine, RoundedCornerShape(16.dp))) {
+                BandMap(t, place.lat, place.lon, Modifier.fillMaxSize())
+                Box(Modifier.matchParentSize().clickable { mapOpen = true })
+            }
+            MapLegend(t, visible)
         }
 
         val durLabel = stringResource(if (visible) R.string.duration_here else R.string.duration_center)
@@ -214,7 +206,7 @@ private fun ExpandedMap(t: Transit, place: Place, evaluate: suspend (Double, Dou
                 }
             }
             Box(Modifier.fillMaxWidth().weight(1f)) {
-                BandMap(t, place.lat, place.lon, Modifier.fillMaxSize(), interactive = true, pin = pin, onLongPress = { pin = it })
+                BandMap(t, place.lat, place.lon, Modifier.fillMaxSize(), interactive = true, pin = pin, onLongPress = { pin = it }, topPaddingDp = 64)
                 Text(
                     stringResource(R.string.map_hint), color = C.Muted, fontSize = 12.sp,
                     modifier = Modifier.padding(12.dp).clip(RoundedCornerShape(6.dp)).background(C.Ink).padding(horizontal = 8.dp, vertical = 4.dp)
@@ -258,6 +250,25 @@ private fun ExpandedMap(t: Transit, place: Place, evaluate: suspend (Double, Dou
                     ) { Text(stringResource(R.string.preview), fontWeight = FontWeight.SemiBold, fontSize = 15.sp) }
                 }
             }
+        }
+    }
+}
+
+/** Legenda por baixo do mapa: nada fica por cima da tua posição. */
+@Composable
+private fun MapLegend(t: Transit, visible: Boolean) {
+    val sun = t.body == Ephemeris.Body.SUN
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.padding(horizontal = 4.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Box(Modifier.size(12.dp).clip(RoundedCornerShape(3.dp)).background(if (sun) Color(0xFFE39A0B) else Color(0xFF3D6FD1)))
+            Text(stringResource(R.string.band_width, t.bandWidthKm), color = C.Muted, fontSize = 12.sp)
+        }
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Box(Modifier.size(12.dp).clip(RoundedCornerShape(6.dp)).background(Color(0xFF2F6FEB)).border(2.dp, Color.White, RoundedCornerShape(6.dp)))
+            Text(
+                if (visible) stringResource(R.string.you_inside) else stringResource(R.string.you_outside, t.distanceToBandKm()),
+                color = C.Muted, fontSize = 12.sp
+            )
         }
     }
 }

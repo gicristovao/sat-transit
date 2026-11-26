@@ -68,6 +68,7 @@ fun BandMap(
     interactive: Boolean = false,
     pin: LatLng? = null,
     onLongPress: ((LatLng) -> Unit)? = null,
+    topPaddingDp: Int = 28,
 ) {
     val context = LocalContext.current
     val mapView = remember { MapView(context).apply { onCreate(null) } }
@@ -152,7 +153,12 @@ fun BandMap(
                     val p = offset(foot, dir, km)
                     b.include(LatLng(p.latitude(), p.longitude()))
                 }
-                map.moveCamera(CameraUpdateFactory.newLatLngBounds(b.build(), 60))
+                // Margens em dp: a tua posição e a faixa ficam sempre visíveis, longe das bordas.
+                val d = context.resources.displayMetrics.density
+                val side = (28 * d).toInt()
+                map.moveCamera(
+                    CameraUpdateFactory.newLatLngBounds(b.build(), side, (topPaddingDp * d).toInt(), side, (36 * d).toInt())
+                )
             }
         }
     }
