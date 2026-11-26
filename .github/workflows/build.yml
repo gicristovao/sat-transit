@@ -13,6 +13,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Calcular versão
+        run: |
+          base=$(tr -d ' \n' < VERSION)
+          since=$(git log -1 --format=%H -- VERSION)
+          patch=$(git rev-list --count "$since"..HEAD)
+          echo "APP_VERSION=$base.$patch" >> "$GITHUB_ENV"
 
       - uses: actions/setup-java@v4
         with:
@@ -30,11 +39,11 @@ jobs:
         run: gradle :app:assembleDebug --no-daemon
 
       - name: Preparar APK
-        run: cp app/build/outputs/apk/debug/app-debug.apk SatTransit-0.1.${{ github.run_number }}.apk
+        run: cp app/build/outputs/apk/debug/app-debug.apk SatTransit-${{ env.APP_VERSION }}.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: SatTransit-0.1.${{ github.run_number }}
+          name: SatTransit-${{ env.APP_VERSION }}
           path: SatTransit-*.apk
 
       - name: Notas da versão
@@ -43,8 +52,8 @@ jobs:
       - name: Publicar versão
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v0.1.${{ github.run_number }}
-          name: SatTransit 0.1.${{ github.run_number }}
+          tag_name: v${{ env.APP_VERSION }}.${{ github.run_number }}
+          name: SatTransit ${{ env.APP_VERSION }}
           body_path: notes.md
           make_latest: "true"
           files: SatTransit-*.apk

@@ -46,8 +46,10 @@ class Updater(private val context: Context) {
         } finally {
             c.disconnect()
         }
+        // etiqueta: vMAIOR.MENOR.CORREÇÃO.COMPILAÇÃO; o último número decide se é mais nova
         val tag = json.optString("tag_name").removePrefix("v")
         val code = tag.substringAfterLast('.').toLongOrNull() ?: return@withContext null
+        val name = if (tag.count { it == '.' } >= 3) tag.substringBeforeLast('.') else tag
         if (code <= installedVersionCode()) return@withContext null
         val assets = json.optJSONArray("assets") ?: return@withContext null
         for (i in 0 until assets.length()) {
@@ -57,7 +59,7 @@ class Updater(private val context: Context) {
                     .map { it.trim() }
                     .filter { it.startsWith("- ") || it.startsWith("· ") || it.startsWith("* ") }
                     .map { it.drop(2) }
-                return@withContext Release(tag, code, notes, a.getString("browser_download_url"), a.optLong("size"))
+                return@withContext Release(name, code, notes, a.getString("browser_download_url"), a.optLong("size"))
             }
         }
         null

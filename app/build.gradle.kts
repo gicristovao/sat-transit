@@ -15,7 +15,8 @@ android {
         minSdk = 29
         targetSdk = 35
         versionCode = buildNumber
-        versionName = "0.1.$buildNumber"
+        // MAIOR.MENOR.CORREÇÃO, calculado pelo GitHub Actions a partir do ficheiro VERSION
+        versionName = System.getenv("APP_VERSION") ?: "dev"
         ndk {
             // Só telemóveis de 64 bits por agora (APK mais pequeno). Alargar antes de publicar.
             abiFilters += listOf("arm64-v8a")
