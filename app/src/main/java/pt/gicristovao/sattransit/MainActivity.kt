@@ -25,6 +25,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         org.maplibre.android.MapLibre.getInstance(this)
         pt.gicristovao.sattransit.work.TransitCheck.schedule(this)
+        pt.gicristovao.sattransit.work.TransitCheck.checkNow(this)
         enableEdgeToEdge()
         setContent {
             TransitListScreen(vm = vm, onRequestPermission = ::requestLocation)

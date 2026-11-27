@@ -1,6 +1,8 @@
 package pt.gicristovao.sattransit.work
 
 import android.Manifest
+import android.app.AlarmManager
+import android.content.BroadcastReceiver
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -35,6 +37,7 @@ import java.util.Date
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 import kotlin.math.abs
+import kotlinx.coroutines.launch
 
 object TransitCheck {
     private const val CHANNEL = "transit_changes"
@@ -74,20 +77,52 @@ object TransitCheck {
                 .build()
             wm.enqueueUniquePeriodicWork(PERIODIC, ExistingPeriodicWorkPolicy.KEEP, req)
         }
-        saved.forEach { s ->
-            val delay = s.lastTimeMs - 3 * 3_600_000L - System.currentTimeMillis()
-            if (!s.finalNotified) {
-                val req = OneTimeWorkRequestBuilder<TransitCheckWorker>()
-                    .setInitialDelay(maxOf(0L, delay), TimeUnit.MILLISECONDS)
-                    .setInputData(workDataOf("final" to s.id))
-                    .build()
-                wm.enqueueUniqueWork("final-${s.id}", ExistingWorkPolicy.REPLACE, req)
-            }
+        // Lembrete final: alarme do sistema permitido em repouso (sem autorizações especiais).
+        val am = context.getSystemService(AlarmManager::class.java)
+        saved.filter { !it.finalNotified }.forEach { s ->
+            val at = maxOf(System.currentTimeMillis() + 60_000L, s.lastTimeMs - 3 * 3_600_000L)
+            am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, finalIntent(context, s.id))
         }
     }
 
+    /** Verificação imediata (ao abrir a app), quando houver rede. */
+    fun checkNow(context: Context) {
+        if (SavedTransitStore(context).all().none { it.lastTimeMs > System.currentTimeMillis() }) return
+        val req = OneTimeWorkRequestBuilder<TransitCheckWorker>()
+            .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
+            .build()
+        WorkManager.getInstance(context).enqueueUniqueWork("check-now", ExistingWorkPolicy.KEEP, req)
+    }
+
+    private fun finalIntent(context: Context, id: String): PendingIntent =
+        PendingIntent.getBroadcast(
+            context, id.hashCode(),
+            Intent(context, FinalReminderReceiver::class.java).putExtra("id", id),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+
     fun cancelFinal(context: Context, id: String) {
-        WorkManager.getInstance(context).cancelUniqueWork("final-$id")
+        context.getSystemService(AlarmManager::class.java).cancel(finalIntent(context, id))
+    }
+
+    /** Verificação final de um trânsito guardado (cerca de 3 h antes) e notificação. */
+    suspend fun runFinal(ctx: Context, id: String) {
+        val store = SavedTransitStore(ctx)
+        val s = store.all().firstOrNull { it.id == id && !it.finalNotified } ?: return
+        if (s.lastTimeMs < System.currentTimeMillis()) return
+        val tle = runCatching { TleRepository(ctx).get(ISS).tle }.getOrNull() ?: return
+        val eph = ctx.assets.open("ephem_sun_moon.bin").use { Ephemeris(it) }
+        val (upd, _) = recheck(s, tle, eph)
+        val what = bodyOf(ctx, s.body)
+        val nid = s.id.hashCode()
+        when {
+            upd.gone -> notify(ctx, nid, ctx.getString(R.string.notif_gone_title, what, day(s.lastTimeMs)), ctx.getString(R.string.notif_gone_text))
+            upd.changed -> notify(ctx, nid, ctx.getString(R.string.notif_final_changed_title, hms(upd.lastTimeMs)),
+                ctx.getString(R.string.notif_final_text, what, s.placeName))
+            else -> notify(ctx, nid, ctx.getString(R.string.notif_final_ok_title, hms(upd.lastTimeMs)),
+                ctx.getString(R.string.notif_final_text, what, s.placeName))
+        }
+        store.upsert(upd.copy(finalNotified = true))
     }
 
     fun notify(context: Context, id: Int, title: String, text: String) {
@@ -129,8 +164,8 @@ class TransitCheckWorker(context: Context, params: WorkerParameters) : Coroutine
         val store = SavedTransitStore(ctx)
         store.prune()
         val now = System.currentTimeMillis()
-        val finalId = inputData.getString("final")
-        val targets = store.all().filter { it.lastTimeMs > now && (finalId == null || it.id == finalId) }
+        val finalId: String? = null
+        val targets = store.all().filter { it.lastTimeMs > now }
         if (targets.isEmpty()) return Result.success()
 
         val tle = runCatching { TleRepository(ctx).get(TransitCheck.ISS).tle }.getOrElse { return Result.retry() }
@@ -168,5 +203,27 @@ class TransitCheckWorker(context: Context, params: WorkerParameters) : Coroutine
         }
         if (finalId == null) TransitCheck.schedule(ctx)
         return Result.success()
+    }
+}
+
+/** Dispara o lembrete final; faz a verificação em poucos segundos com goAsync. */
+class FinalReminderReceiver : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+        val id = intent.getStringExtra("id") ?: return
+        val pending = goAsync()
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Default).launch {
+            try {
+                kotlinx.coroutines.withTimeoutOrNull(9_000) { TransitCheck.runFinal(context.applicationContext, id) }
+            } finally {
+                pending.finish()
+            }
+        }
+    }
+}
+
+/** Repõe os alarmes depois de o telemóvel reiniciar. */
+class BootReceiver : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+        if (intent.action == Intent.ACTION_BOOT_COMPLETED) TransitCheck.schedule(context)
     }
 }
