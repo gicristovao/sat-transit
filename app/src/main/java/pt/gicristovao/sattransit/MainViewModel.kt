@@ -73,6 +73,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     var lastGps: Place? = null
         private set
 
+    /** Muda o raio de "Onde estou" e recalcula. */
+    fun setHereRadius(km: Int) {
+        places.radiusHere = km
+        refresh()
+    }
+
     fun useHere() {
         if (!_otherMode.value) return
         _otherMode.value = false
@@ -82,7 +88,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     /** Passa a mostrar os trânsitos de um local escolhido, com o raio indicado. */
     fun useOther(p: SavedPlace, radiusKm: Int) {
         places.chosen = p
-        places.radiusKm = radiusKm
+        places.radiusOther = radiusKm
         _chosen.value = p
         _otherMode.value = true
         refresh()
@@ -197,7 +203,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             try {
                 val other = _otherMode.value
                 val chosenPlace = _chosen.value
-                val radius = places.radiusKm
+                val radius = if (other && chosenPlace != null) places.radiusOther else places.radiusHere
                 val place = if (other && chosenPlace != null) {
                     Place(chosenPlace.lat, chosenPlace.lon, 0.0, chosenPlace.name)
                 } else {

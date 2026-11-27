@@ -129,4 +129,9 @@
     <string name="place_outside">Local · a %.1f km da faixa</string>
     <string name="preview_from_place">Vista do local escolhido</string>
     <string name="hold_to_remove">Mantém premido um local guardado para o apagar</string>
+    <string name="radius_btn">Raio</string>
+    <string name="none_hint">Os trânsitos num sítio fixo são raros: um raio maior encontra mais.</string>
+    <string name="increase_radius">Aumentar o raio</string>
+    <string name="radius_here_note">Só para \"Onde estou\". O \"Outro local\" tem o seu próprio raio.</string>
+    <string name="apply">Aplicar</string>
 </resources>

@@ -64,6 +64,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import kotlin.math.abs
+import kotlin.math.roundToInt
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -86,6 +87,7 @@ fun TransitListScreen(vm: MainViewModel, onRequestPermission: () -> Unit) {
     val otherPlace by vm.otherMode.collectAsStateWithLifecycle()
     val chosen by vm.chosen.collectAsStateWithLifecycle()
     var showLocal by remember { mutableStateOf(false) }
+    var radiusSheet by remember { mutableStateOf(false) }
     var filter by remember { mutableStateOf<Ephemeris.Body?>(null) }
     val context = LocalContext.current
     val update by vm.update.collectAsStateWithLifecycle()
@@ -124,7 +126,7 @@ fun TransitListScreen(vm: MainViewModel, onRequestPermission: () -> Unit) {
         UpdateBanner(update) { vm.openSheet() }
         Segmented(left = stringResource(R.string.where_i_am), right = stringResource(R.string.other_place), rightSelected = otherPlace) { other ->
             if (!other) vm.useHere()
-            else chosen?.let { vm.useOther(it, vm.places.radiusKm) } ?: run { showLocal = true }
+            else chosen?.let { vm.useOther(it, vm.places.radiusOther) } ?: run { showLocal = true }
         }
         Spacer(Modifier.height(8.dp))
 
@@ -144,7 +146,7 @@ fun TransitListScreen(vm: MainViewModel, onRequestPermission: () -> Unit) {
             }
             is UiState.Error -> Message(s.message, stringResource(R.string.try_again)) { onRequestPermission() }
             is UiState.Ready -> {
-                if (s.isGps) LocationRow(s) else OtherPlaceRow(s) { showLocal = true }
+                if (s.isGps) LocationRow(s) { radiusSheet = true } else OtherPlaceRow(s) { showLocal = true }
                 Spacer(Modifier.height(6.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Chip(stringResource(R.string.filter_all), filter == null) { filter = null }
@@ -160,11 +162,22 @@ fun TransitListScreen(vm: MainViewModel, onRequestPermission: () -> Unit) {
                 ) {
                     if (list.isEmpty()) {
                         item {
-                            Text(
-                                stringResource(R.string.none_found, s.days, s.radiusKm),
-                                color = C.Muted, fontSize = 15.sp, textAlign = TextAlign.Center,
-                                modifier = Modifier.fillMaxWidth().padding(top = 32.dp)
-                            )
+                            Column(
+                                Modifier.fillMaxWidth().padding(top = 32.dp, start = 8.dp, end = 8.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                Text(
+                                    stringResource(R.string.none_found, s.days, s.radiusKm) + "\n" + stringResource(R.string.none_hint),
+                                    color = C.Muted, fontSize = 15.sp, textAlign = TextAlign.Center, lineHeight = 21.sp
+                                )
+                                if (s.transits.isEmpty()) {
+                                    Button(
+                                        onClick = { if (s.isGps) radiusSheet = true else showLocal = true },
+                                        colors = ButtonDefaults.buttonColors(containerColor = C.Amber, contentColor = C.Ink),
+                                        shape = RoundedCornerShape(14.dp), modifier = Modifier.heightIn(min = 48.dp)
+                                    ) { Text(stringResource(R.string.increase_radius), fontWeight = FontWeight.SemiBold, fontSize = 15.sp) }
+                                }
+                            }
                         }
                     }
                     items(list) { t ->
@@ -188,6 +201,10 @@ fun TransitListScreen(vm: MainViewModel, onRequestPermission: () -> Unit) {
                 }
             }
         }
+    }
+    val readyNow = state as? UiState.Ready
+    if (radiusSheet && readyNow != null) {
+        RadiusSheet(readyNow.radiusKm, onClose = { radiusSheet = false }) { km -> radiusSheet = false; vm.setHereRadius(km) }
     }
     if (sheetOpen && update !is UpdateState.None) {
         UpdateSheet(
@@ -320,11 +337,15 @@ private fun formatHours(h: Double): String = when {
 }
 
 @Composable
-private fun LocationRow(s: UiState.Ready) {
+private fun LocationRow(s: UiState.Ready, onRadius: () -> Unit) {
     val p = s.place
     val west = stringArrayResource(R.array.compass)[12]
     val coords = String.format(Locale.getDefault(), "%.3f° %s · %.3f° %s", abs(p.lat), if (p.lat >= 0) "N" else "S", abs(p.lon), if (p.lon >= 0) "E" else west)
-    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.heightIn(min = 44.dp)) {
+    Row(
+        Modifier.fillMaxWidth().heightIn(min = 44.dp).clip(RoundedCornerShape(12.dp)).border(1.dp, C.Line, RoundedCornerShape(12.dp))
+            .clickable(onClick = onRadius).padding(horizontal = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
         Canvas(Modifier.size(18.dp)) {
             val st = Stroke(width = 2.dp.toPx())
             drawCircle(C.Moon, radius = size.minDimension * 0.16f, style = st)
@@ -333,8 +354,36 @@ private fun LocationRow(s: UiState.Ready) {
         Spacer(Modifier.size(8.dp))
         Text(
             stringResource(R.string.location_line, p.name ?: coords, s.radiusKm, s.days),
-            color = C.Muted, fontSize = 14.sp
+            color = C.Muted, fontSize = 14.sp, maxLines = 1, modifier = Modifier.weight(1f)
         )
+        Text(stringResource(R.string.radius_btn), color = C.Amber, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+    }
+}
+
+/** Painel para mudar o raio de "Onde estou". */
+@Composable
+private fun RadiusSheet(current: Int, onClose: () -> Unit, onApply: (Int) -> Unit) {
+    var draft by remember { mutableStateOf(current) }
+    Box(Modifier.fillMaxSize().background(Color(0xB805070B)).clickable(onClick = onClose), contentAlignment = Alignment.BottomCenter) {
+        Column(
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp)).background(C.Surface)
+                .clickable(indication = null, interactionSource = remember { MutableInteractionSource() }) {}
+                .navigationBarsPadding().padding(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Box(Modifier.align(Alignment.CenterHorizontally).size(width = 40.dp, height = 4.dp).clip(RoundedCornerShape(2.dp)).background(Color(0xFF3A4256)))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(R.string.search_radius), color = C.Text, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                Text("$draft km", color = C.Text, fontSize = 18.sp, fontFamily = FontFamily.Monospace)
+            }
+            androidx.compose.material3.Slider(
+                value = draft.toFloat(), onValueChange = { draft = ((it / 5).roundToInt() * 5).coerceIn(5, 200) },
+                valueRange = 5f..200f,
+                colors = androidx.compose.material3.SliderDefaults.colors(thumbColor = C.Amber, activeTrackColor = C.Amber, inactiveTrackColor = C.Line)
+            )
+            Text(stringResource(R.string.radius_here_note), color = C.Muted, fontSize = 13.sp, lineHeight = 18.sp)
+            PrimaryButton(stringResource(R.string.apply)) { onApply(draft) }
+        }
     }
 }
 

@@ -135,4 +135,9 @@
     <string name="place_outside">Place · %.1f km from the band</string>
     <string name="preview_from_place">Seen from the chosen place</string>
     <string name="hold_to_remove">Long-press a saved place to remove it</string>
+    <string name="radius_btn">Radius</string>
+    <string name="none_hint">Transits from a fixed spot are rare: a larger radius finds more.</string>
+    <string name="increase_radius">Increase radius</string>
+    <string name="radius_here_note">Only for \"Where I am\". \"Other place\" has its own radius.</string>
+    <string name="apply">Apply</string>
 </resources>

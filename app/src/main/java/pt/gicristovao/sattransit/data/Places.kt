@@ -33,9 +33,15 @@ class PlaceStore(context: Context) {
             prefs.edit().putString("chosen", v?.let { JSONObject().put("n", it.name).put("a", it.lat).put("o", it.lon).toString() }).apply()
         }
 
-    var radiusKm: Int
+    /** Raio do "Outro local". */
+    var radiusOther: Int
         get() = prefs.getInt("radius", 100)
         set(v) = prefs.edit().putInt("radius", v).apply()
+
+    /** Raio de "Onde estou" (independente do outro local). */
+    var radiusHere: Int
+        get() = prefs.getInt("radiusHere", 100)
+        set(v) = prefs.edit().putInt("radiusHere", v).apply()
 }
 
 /** Pesquisa e nome de locais através do Geocoder do Android (sem chave). */

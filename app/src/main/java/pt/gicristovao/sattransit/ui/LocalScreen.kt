@@ -113,7 +113,7 @@ fun LocalScreen(vm: MainViewModel, onBack: () -> Unit, onDone: () -> Unit) {
         ?: SavedPlace("Portugal", 39.6, -8.0)
     }
     var pin by remember { mutableStateOf(start) }
-    var radius by remember { mutableIntStateOf(vm.places.radiusKm) }
+    var radius by remember { mutableIntStateOf(vm.places.radiusOther) }
     var recenter by remember { mutableIntStateOf(0) }
     var saved by remember { mutableStateOf(vm.places.saved()) }
     var query by remember { mutableStateOf("") }
