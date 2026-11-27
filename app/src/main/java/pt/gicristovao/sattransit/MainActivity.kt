@@ -24,6 +24,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         org.maplibre.android.MapLibre.getInstance(this)
+        pt.gicristovao.sattransit.work.TransitCheck.schedule(this)
         enableEdgeToEdge()
         setContent {
             TransitListScreen(vm = vm, onRequestPermission = ::requestLocation)

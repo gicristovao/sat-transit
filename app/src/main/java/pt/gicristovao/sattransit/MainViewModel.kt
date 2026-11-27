@@ -15,9 +15,13 @@ import pt.gicristovao.sattransit.data.Place
 import pt.gicristovao.sattransit.data.PlaceSearch
 import pt.gicristovao.sattransit.data.PlaceStore
 import pt.gicristovao.sattransit.data.SavedPlace
+import pt.gicristovao.sattransit.data.SavedTransit
+import pt.gicristovao.sattransit.data.SavedTransitStore
+import pt.gicristovao.sattransit.work.TransitCheck
 import pt.gicristovao.sattransit.data.TleRepository
 import pt.gicristovao.sattransit.data.Updater
 import java.io.File
+import kotlin.math.abs
 import pt.gicristovao.sattransit.engine.Ephemeris
 import pt.gicristovao.sattransit.engine.Transit
 import pt.gicristovao.sattransit.engine.TransitFinder
@@ -79,6 +83,46 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun setHereRadius(km: Int) {
         places.radiusHere = km
         refresh()
+    }
+
+    // ---- trânsitos guardados ----
+    private val savedStore = SavedTransitStore(app)
+    private val _saved = MutableStateFlow(savedStore.all())
+    val saved: StateFlow<List<SavedTransit>> = _saved
+
+    /** Época (ms) da órbita em uso, para a caixa de confiança. */
+    val tleEpochMillis: Long? get() = lastTle?.let { Transit.jdToMillis(it.epochJd) }
+
+    fun savedFor(t: Transit): SavedTransit? = _saved.value.firstOrNull { it.matches(t) }
+
+    /** Guarda ou deixa de guardar; devolve true se ficou guardado. */
+    fun toggleSave(t: Transit, lat: Double, lon: Double, name: String): Boolean {
+        val app = getApplication<Application>()
+        val existing = savedFor(t)
+        if (existing != null) {
+            savedStore.remove(existing.id)
+            TransitCheck.cancelFinal(app, existing.id)
+        } else {
+            savedStore.upsert(SavedTransit.from(t, lat, lon, name))
+        }
+        _saved.value = savedStore.all()
+        TransitCheck.schedule(app)
+        return existing == null
+    }
+
+    /** Recalcula os trânsitos guardados (para o filtro "Guardados"). */
+    suspend fun savedTransits(): List<Pair<SavedTransit, Transit>> {
+        savedStore.prune()
+        val (tle, eph) = ensureData(false)
+        val out = withContext(Dispatchers.Default) {
+            savedStore.all().filter { it.lastTimeMs > System.currentTimeMillis() - 3_600_000 }.mapNotNull { s ->
+                val (upd, t) = TransitCheck.recheck(s, tle, eph)
+                savedStore.upsert(upd)
+                t?.let { upd to it }
+            }
+        }
+        _saved.value = savedStore.all()
+        return out.sortedBy { it.first.lastTimeMs }
     }
 
     private var hereCache: UiState.Ready? = null

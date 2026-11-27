@@ -6,6 +6,9 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import pt.gicristovao.sattransit.data.Reliability
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -89,6 +92,13 @@ fun TransitListScreen(vm: MainViewModel, onRequestPermission: () -> Unit) {
     var showLocal by remember { mutableStateOf(false) }
     var radiusSheet by remember { mutableStateOf(false) }
     var filter by remember { mutableStateOf<Ephemeris.Body?>(null) }
+    var savedOnly by remember { mutableStateOf(false) }
+    val savedRecords by vm.saved.collectAsStateWithLifecycle()
+    var savedList by remember { mutableStateOf<List<Pair<pt.gicristovao.sattransit.data.SavedTransit, Transit>>?>(null) }
+    var selectedPlace by remember { mutableStateOf<pt.gicristovao.sattransit.data.Place?>(null) }
+    LaunchedEffect(savedOnly) {
+        if (savedOnly) { savedList = null; savedList = vm.savedTransits() }
+    }
     val context = LocalContext.current
     val update by vm.update.collectAsStateWithLifecycle()
     val sheetOpen by vm.sheetOpen.collectAsStateWithLifecycle()
@@ -105,7 +115,14 @@ fun TransitListScreen(vm: MainViewModel, onRequestPermission: () -> Unit) {
         return
     }
     if (sel != null && ready != null) {
-        TransitDetailScreen(sel, ready.place, ready.isGps, { la, lo -> vm.evaluateAt(sel, la, lo) }) { selected = null }
+        val place = selectedPlace ?: ready.place
+        val isGps = selectedPlace == null && ready.isGps
+        TransitDetailScreen(
+            sel, place, isGps, { la, lo -> vm.evaluateAt(sel, la, lo) },
+            saved = savedRecords.firstOrNull { it.matches(sel) },
+            tleEpochMillis = vm.tleEpochMillis,
+            onToggleSave = { la, lo -> vm.toggleSave(sel, la, lo, place.name ?: "") },
+        ) { selected = null; selectedPlace = null }
         return
     }
 
@@ -149,19 +166,29 @@ fun TransitListScreen(vm: MainViewModel, onRequestPermission: () -> Unit) {
             is UiState.Ready -> {
                 if (s.isGps) LocationRow(s) { radiusSheet = true } else OtherPlaceRow(s) { showLocal = true }
                 Spacer(Modifier.height(6.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Chip(stringResource(R.string.filter_all), filter == null) { filter = null }
-                    Chip(stringResource(R.string.sun), filter == Ephemeris.Body.SUN) { filter = Ephemeris.Body.SUN }
-                    Chip(stringResource(R.string.moon), filter == Ephemeris.Body.MOON) { filter = Ephemeris.Body.MOON }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
+                    Chip(stringResource(R.string.filter_all), filter == null && !savedOnly) { filter = null; savedOnly = false }
+                    Chip(stringResource(R.string.sun), filter == Ephemeris.Body.SUN && !savedOnly) { filter = Ephemeris.Body.SUN; savedOnly = false }
+                    Chip(stringResource(R.string.moon), filter == Ephemeris.Body.MOON && !savedOnly) { filter = Ephemeris.Body.MOON; savedOnly = false }
+                    Chip(stringResource(R.string.filter_saved), savedOnly, icon = { BookmarkIcon(filled = true, sizeDp = 14) }) { savedOnly = true; filter = null }
                 }
                 Spacer(Modifier.height(16.dp))
-                val list = s.transits.filter { filter == null || it.body == filter }
+                val list = if (savedOnly) savedList?.map { it.second } ?: emptyList()
+                    else s.transits.filter { filter == null || it.body == filter }
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     contentPadding = PaddingValues(bottom = 24.dp),
                     modifier = Modifier.weight(1f)
                 ) {
-                    if (list.isEmpty()) {
+                    if (savedOnly && list.isEmpty()) {
+                        item {
+                            Text(
+                                if (savedList == null) stringResource(R.string.calculating) else stringResource(R.string.no_saved),
+                                color = C.Muted, fontSize = 15.sp, textAlign = TextAlign.Center,
+                                modifier = Modifier.fillMaxWidth().padding(top = 32.dp)
+                            )
+                        }
+                    } else if (list.isEmpty()) {
                         item {
                             Column(
                                 Modifier.fillMaxWidth().padding(top = 32.dp, start = 8.dp, end = 8.dp),
@@ -182,7 +209,11 @@ fun TransitListScreen(vm: MainViewModel, onRequestPermission: () -> Unit) {
                         }
                     }
                     items(list) { t ->
-                        TransitCard(t) { selected = t }
+                        val rec = savedRecords.firstOrNull { it.matches(t) }
+                        TransitCard(t, saved = rec != null) {
+                            selected = t
+                            selectedPlace = if (savedOnly && rec != null) pt.gicristovao.sattransit.data.Place(rec.lat, rec.lon, 0.0, rec.placeName) else null
+                        }
                     }
                     item {
                         val h = (System.currentTimeMillis() - s.tleEpochMillis) / 3_600_000.0
@@ -430,15 +461,17 @@ private fun Segmented(left: String, right: String, rightSelected: Boolean, onSel
 }
 
 @Composable
-private fun Chip(label: String, selected: Boolean, onClick: () -> Unit) {
-    Box(
+private fun Chip(label: String, selected: Boolean, icon: (@Composable () -> Unit)? = null, onClick: () -> Unit) {
+    Row(
         Modifier.heightIn(min = 44.dp).clip(RoundedCornerShape(22.dp))
             .background(if (selected) C.Text else Color.Transparent)
             .border(if (selected) BorderStroke(0.dp, Color.Transparent) else BorderStroke(1.dp, C.Line), RoundedCornerShape(22.dp))
             .clickable(onClick = onClick)
-            .padding(horizontal = 18.dp),
-        contentAlignment = Alignment.Center
+            .padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
+        icon?.invoke()
         Text(label, color = if (selected) C.Ink else C.Text, fontSize = 14.sp,
             fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium)
     }
@@ -446,7 +479,7 @@ private fun Chip(label: String, selected: Boolean, onClick: () -> Unit) {
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun TransitCard(t: Transit, onClick: () -> Unit) {
+private fun TransitCard(t: Transit, saved: Boolean = false, onClick: () -> Unit) {
     val visible = t.visibleFromObserver()
     val date = Date(Transit.jdToMillis(t.jdObserver))
     val day = SimpleDateFormat("EEE, d MMM", Locale.getDefault()).format(date).replace(".", "")
@@ -464,10 +497,17 @@ private fun TransitCard(t: Transit, onClick: () -> Unit) {
                 BodyIcon(t)
                 Spacer(Modifier.size(8.dp))
                 Text("${stringResource(if (sun) R.string.sun else R.string.moon)} · $day", color = C.Text, fontSize = 15.sp,
-                    fontWeight = FontWeight.SemiBold, maxLines = 1)
+                    fontWeight = FontWeight.SemiBold, maxLines = 1, modifier = Modifier.weight(1f))
+                if (saved) BookmarkIcon(filled = true, sizeDp = 14)
             }
             Text(hms, color = C.Text, fontSize = 28.sp, fontFamily = FontFamily.Monospace, letterSpacing = (-0.5).sp)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                val conf = Reliability.level(t)
+                val cc = confidenceColor(conf)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp), modifier = Modifier.align(Alignment.CenterVertically)) {
+                    ConfidenceDot(conf, cc)
+                    Text(stringResource(R.string.conf_chip, confidenceLabel(conf), kotlin.math.ceil(Reliability.marginSeconds(t)).toInt()), color = cc, fontSize = 13.sp)
+                }
                 if (visible) {
                     Text(stringResource(R.string.visible_here), color = C.Ink, fontSize = 12.sp, fontWeight = FontWeight.SemiBold,
                         modifier = Modifier.align(Alignment.CenterVertically).clip(RoundedCornerShape(5.dp)).background(C.Amber)
@@ -475,7 +515,6 @@ private fun TransitCard(t: Transit, onClick: () -> Unit) {
                 }
                 val dur = if (visible) t.durationObserverS else t.durationCenterS
                 Meta(stringResource(R.string.seconds_1, dur))
-                Meta(stringResource(R.string.elevation_short, t.altitudeDeg))
                 if (!visible) Meta(stringResource(R.string.km_from_band, t.distanceToBandKm()))
             }
         }

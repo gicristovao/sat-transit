@@ -48,6 +48,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import pt.gicristovao.sattransit.data.Place
+import pt.gicristovao.sattransit.data.SavedTransit
+import pt.gicristovao.sattransit.data.Confidence
+import pt.gicristovao.sattransit.data.Reliability
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import org.maplibre.android.geometry.LatLng
 import pt.gicristovao.sattransit.R
 import androidx.compose.ui.res.stringResource
@@ -66,9 +75,15 @@ fun TransitDetailScreen(
     place: Place,
     isGps: Boolean,
     evaluate: suspend (Double, Double) -> Transit?,
+    saved: SavedTransit? = null,
+    tleEpochMillis: Long? = null,
+    onToggleSave: (lat: Double, lon: Double) -> Boolean = { _, _ -> false },
     onBack: () -> Unit,
 ) {
     BackHandler(onBack = onBack)
+    // pino escolhido no mapa ampliado (null = a posição/local do ecrã)
+    var userPin by remember { mutableStateOf<LatLng?>(null) }
+    val notifPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
     var mapOpen by remember { mutableStateOf(false) }
     BackHandler(enabled = mapOpen) { mapOpen = false }
     var preview by remember { mutableStateOf<Pair<Transit, Boolean>?>(null) }
@@ -104,10 +119,26 @@ fun TransitDetailScreen(
                 }
             }
             if (sun) SunIcon() else MoonPhaseIcon(t.moonIllumination.toFloat(), t.moonWaxing)
-            Column {
-                Text("${stringResource(if (sun) R.string.sun else R.string.moon)} · $day", color = C.Text, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+            Column(Modifier.weight(1f)) {
+                Text("${stringResource(if (sun) R.string.sun else R.string.moon)} · $day", color = C.Text, fontSize = 20.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
                 Text("ISS · ${countdown(whenMs - now, dec)}", color = C.Muted, fontSize = 13.sp, fontFamily = FontFamily.Monospace)
             }
+            val savedToast = stringResource(R.string.saved_toast)
+            Box(
+                Modifier.size(44.dp).clip(RoundedCornerShape(12.dp))
+                    .border(1.dp, if (saved != null) Color(0xFF5C4313) else C.Line, RoundedCornerShape(12.dp))
+                    .clickable {
+                        val p = userPin
+                        val nowSaved = onToggleSave(p?.latitude ?: place.lat, p?.longitude ?: place.lon)
+                        if (nowSaved) {
+                            Toast.makeText(context, savedToast, Toast.LENGTH_SHORT).show()
+                            if (Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                                notifPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                            }
+                        }
+                    },
+                contentAlignment = Alignment.Center
+            ) { BookmarkIcon(filled = saved != null, sizeDp = 18) }
         }
 
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -155,6 +186,10 @@ fun TransitDetailScreen(
             )
         }
 
+        ConfidenceBox(t, tleEpochMillis)
+        if (saved != null && saved.changed) ChangedBox(saved)
+        SavedBox(saved != null)
+
         if (sun) {
             Row(
                 Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Color(0xFF1E1708))
@@ -185,16 +220,19 @@ fun TransitDetailScreen(
         ) { Text(stringResource(R.string.preview), fontWeight = FontWeight.SemiBold, fontSize = 16.sp) }
         Spacer(Modifier.height(8.dp))
     }
-    if (mapOpen) ExpandedMap(t, place, evaluate, onPreview = { preview = it to true }) { mapOpen = false }
+    if (mapOpen) ExpandedMap(t, place, evaluate, userPin, onPinChange = { userPin = it }, onPreview = { preview = it to true }) { mapOpen = false }
     preview?.let { (pt, fromPin) -> PreviewScreen(pt, fromPin, isGps) { preview = null } }
     }
 }
 
 @Composable
-private fun ExpandedMap(t: Transit, place: Place, evaluate: suspend (Double, Double) -> Transit?, onPreview: (Transit) -> Unit, onClose: () -> Unit) {
+private fun ExpandedMap(
+    t: Transit, place: Place, evaluate: suspend (Double, Double) -> Transit?,
+    initialPin: LatLng?, onPinChange: (LatLng) -> Unit, onPreview: (Transit) -> Unit, onClose: () -> Unit,
+) {
     val context = LocalContext.current
     val sun = t.body == Ephemeris.Body.SUN
-    var pin by remember { mutableStateOf(LatLng(t.centerLat, t.centerLon)) }
+    var pin by remember { mutableStateOf(initialPin ?: LatLng(t.centerLat, t.centerLon)) }
     var eval by remember { mutableStateOf<Transit?>(null) }
     var busy by remember { mutableStateOf(false) }
     LaunchedEffect(pin) {
@@ -222,7 +260,7 @@ private fun ExpandedMap(t: Transit, place: Place, evaluate: suspend (Double, Dou
                 }
             }
             Box(Modifier.fillMaxWidth().weight(1f)) {
-                BandMap(t, place.lat, place.lon, Modifier.fillMaxSize(), interactive = true, pin = pin, onLongPress = { pin = it }, topPaddingDp = 64)
+                BandMap(t, place.lat, place.lon, Modifier.fillMaxSize(), interactive = true, pin = pin, onLongPress = { pin = it; onPinChange(it) }, topPaddingDp = 64)
                 Text(
                     stringResource(R.string.map_hint), color = C.Muted, fontSize = 12.sp,
                     modifier = Modifier.padding(12.dp).clip(RoundedCornerShape(6.dp)).background(C.Ink).padding(horizontal = 8.dp, vertical = 4.dp)
@@ -267,6 +305,107 @@ private fun ExpandedMap(t: Transit, place: Place, evaluate: suspend (Double, Dou
                 }
             }
         }
+    }
+}
+
+@Composable
+fun BookmarkIcon(filled: Boolean, sizeDp: Int = 14) {
+    Canvas(Modifier.size(width = (sizeDp * 0.8f).dp, height = sizeDp.dp)) {
+        val w = size.width; val h = size.height
+        val p = androidx.compose.ui.graphics.Path().apply {
+            moveTo(w * 0.1f, h * 0.05f); lineTo(w * 0.9f, h * 0.05f); lineTo(w * 0.9f, h * 0.95f)
+            lineTo(w * 0.5f, h * 0.72f); lineTo(w * 0.1f, h * 0.95f); close()
+        }
+        if (filled) drawPath(p, C.Amber)
+        drawPath(p, C.Amber, style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.6.dp.toPx(), join = androidx.compose.ui.graphics.StrokeJoin.Round))
+    }
+}
+
+@Composable
+fun confidenceColor(c: Confidence): Color = when (c) {
+    Confidence.RELIABLE -> Color(0xFF8FD3A6)
+    Confidence.MAY_CHANGE -> Color(0xFFE9C46A)
+    Confidence.INDICATIVE -> C.Muted
+}
+
+@Composable
+fun confidenceLabel(c: Confidence): String = stringResource(
+    when (c) {
+        Confidence.RELIABLE -> R.string.conf_reliable
+        Confidence.MAY_CHANGE -> R.string.conf_may_change
+        Confidence.INDICATIVE -> R.string.conf_indicative
+    }
+)
+
+/** Ponto de confiança: cheio, meio (contorno) ou tracejado, para não depender só da cor. */
+@Composable
+fun ConfidenceDot(c: Confidence, color: Color) {
+    Canvas(Modifier.size(9.dp)) {
+        val r = size.minDimension / 2
+        when (c) {
+            Confidence.RELIABLE -> drawCircle(color, r)
+            Confidence.MAY_CHANGE -> drawCircle(color, r - 1.dp.toPx(), style = androidx.compose.ui.graphics.drawscope.Stroke(2.dp.toPx()))
+            Confidence.INDICATIVE -> drawCircle(color, r - 1.dp.toPx(), style = androidx.compose.ui.graphics.drawscope.Stroke(
+                2.dp.toPx(), pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(2.dp.toPx(), 2.dp.toPx()))))
+        }
+    }
+}
+
+@Composable
+private fun ConfidenceBox(t: Transit, tleEpochMillis: Long?) {
+    val c = Reliability.level(t)
+    val col = confidenceColor(c)
+    val title = stringResource(when (c) {
+        Confidence.RELIABLE -> R.string.conf_title_reliable
+        Confidence.MAY_CHANGE -> R.string.conf_title_may_change
+        Confidence.INDICATIVE -> R.string.conf_title_indicative
+    })
+    val ageH = ((System.currentTimeMillis() - (tleEpochMillis ?: System.currentTimeMillis())) / 3_600_000.0)
+    val ago = when {
+        ageH < 1 -> stringResource(R.string.less_than_hour)
+        ageH < 48 -> stringResource(R.string.n_hours, ageH.toInt())
+        else -> stringResource(R.string.n_days, (ageH / 24).toInt())
+    }
+    val margin = kotlin.math.ceil(Reliability.marginSeconds(t)).toInt()
+    Column(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(C.Surface).padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            ConfidenceDot(c, col)
+            Text(title, color = col, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+        }
+        Text(stringResource(R.string.conf_text, ago, margin), color = C.Muted, fontSize = 13.sp, lineHeight = 18.sp)
+    }
+}
+
+@Composable
+private fun ChangedBox(s: SavedTransit) {
+    Column(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Color(0xFF1E1708))
+            .border(1.dp, Color(0xFF5C4313), RoundedCornerShape(12.dp)).padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Text(stringResource(R.string.changed_title), color = Color(0xFFF1D9A8), fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+        if (s.gone) {
+            Text(stringResource(R.string.gone_text), color = Color(0xFFF1D9A8), fontSize = 13.sp)
+        } else {
+            val dec = DecimalFormatSymbols.getInstance().decimalSeparator
+            fun f(ms: Long) = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date(ms)) + dec + ((ms % 1000) / 100)
+            Text(stringResource(R.string.changed_time, f(s.originalTimeMs), f(s.lastTimeMs)), color = Color(0xFFF1D9A8), fontSize = 13.sp, fontFamily = FontFamily.Monospace)
+            Text(stringResource(R.string.changed_band, s.shiftKm), color = Color(0xFFF1D9A8), fontSize = 13.sp, fontFamily = FontFamily.Monospace)
+        }
+    }
+}
+
+@Composable
+private fun SavedBox(saved: Boolean) {
+    Column(
+        Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(C.Surface).padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Text(stringResource(if (saved) R.string.saved_following else R.string.not_saved), color = C.Text, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+        Text(stringResource(if (saved) R.string.saved_following_text else R.string.not_saved_text), color = C.Muted, fontSize = 13.sp, lineHeight = 18.sp)
     }
 }
 
