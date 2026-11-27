@@ -171,7 +171,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         _otherMode.value = true
         val c = otherCache
         if (c == null) {
-            job?.cancel()
+            cancelJob()
             _state.value = UiState.NeedPlace
             return false
         }
@@ -180,7 +180,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private fun showCachedOrRefresh(c: UiState.Ready?) {
-        job?.cancel()
+        cancelJob()
         if (c == null) { refresh(); return }
         _state.value = c
         job = viewModelScope.launch {
@@ -311,14 +311,74 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     /** Chamado quando a app volta ao primeiro plano (ex.: depois de dar a autorização). */
     fun onResume() {
         if (installPending && updater.canInstall()) install()
+        checkMoved()
     }
 
     fun onPermissionDenied() {
         _state.value = UiState.Error(str(R.string.permission_denied))
     }
 
-    fun refresh(force: Boolean = false) {
+    private val _refreshing = MutableStateFlow(false)
+    /** true enquanto um "puxar para atualizar" corre (a lista antiga fica visível, esbatida). */
+    val refreshing: StateFlow<Boolean> = _refreshing
+    private val _locating = MutableStateFlow(false)
+    /** true enquanto se espera pela leitura GPS de um "puxar para atualizar". */
+    val locating: StateFlow<Boolean> = _locating
+
+    /** Puxar para baixo: posição GPS nova (em "Onde estou") e trânsitos recalculados, sem esconder a lista. */
+    fun pullRefresh() {
+        if (_state.value !is UiState.Ready) { refresh(); return }
+        refresh(keepList = true, freshGps = true)
+    }
+
+    /**
+     * Regresso à app: se a posição mudou mais de 1 km desde o último cálculo, recalcula sozinha.
+     * Usa uma leitura nova (não a última guardada, que pode ser antiga).
+     */
+    private var lastMoveCheck = 0L
+    private fun checkMoved() {
+        val c = _state.value as? UiState.Ready ?: return
+        if (!c.isGps || _otherMode.value || _refreshing.value) return
+        if (job?.isActive == true) return
+        val now = System.currentTimeMillis()
+        if (now - lastMoveCheck < 60_000) return
+        lastMoveCheck = now
+        job = viewModelScope.launch {
+            val p = runCatching { locations.current(fresh = true) }.getOrNull() ?: return@launch
+            val d = FloatArray(1)
+            android.location.Location.distanceBetween(p.lat, p.lon, c.place.lat, c.place.lon, d)
+            if (_state.value !== c) return@launch
+            if (d[0] > 1000f) {
+                refresh(keepList = true, knownPlace = p)
+            } else {
+                // mesma zona: só atualiza a hora da leitura
+                val upd = c.copy(place = c.place.copy(fixTimeMs = p.fixTimeMs))
+                hereCache = upd
+                _state.value = upd
+            }
+        }
+    }
+
+    /** Cancela o cálculo em curso e limpa os indicadores de "puxar para atualizar". */
+    private fun cancelJob() {
         job?.cancel()
+        _refreshing.value = false
+        _locating.value = false
+    }
+
+    private suspend fun isCurrent(): Boolean = job === kotlin.coroutines.coroutineContext[Job]
+
+    /**
+     * Recalcula.
+     * @param keepList mantém a lista atual visível (esbatida) em vez do ecrã "a carregar".
+     * @param freshGps ignora a última posição guardada e pede uma leitura nova.
+     * @param knownPlace posição já obtida (evita nova leitura).
+     */
+    fun refresh(force: Boolean = false, keepList: Boolean = false, freshGps: Boolean = false, knownPlace: Place? = null) {
+        cancelJob()
+        val previous = _state.value as? UiState.Ready
+        val quiet = keepList && previous != null
+        _refreshing.value = quiet
         job = viewModelScope.launch {
             try {
                 val other = _otherMode.value
@@ -327,22 +387,29 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 val radius = if (other && chosenPlace != null) places.radiusOther else places.radiusHere
                 val place = if (other && chosenPlace != null) {
                     Place(chosenPlace.lat, chosenPlace.lon, 0.0, chosenPlace.name)
+                } else if (knownPlace != null) {
+                    knownPlace.also { lastGps = it }
                 } else {
-                    _state.value = UiState.Loading(str(R.string.getting_position), null)
-                    (locations.current() ?: throw IllegalStateException(str(R.string.no_position))).also { lastGps = it }
+                    if (quiet) _locating.value = true
+                    else _state.value = UiState.Loading(str(R.string.getting_position), null)
+                    try {
+                        (locations.current(fresh = freshGps) ?: throw IllegalStateException(str(R.string.no_position))).also { lastGps = it }
+                    } finally {
+                        if (isCurrent()) _locating.value = false
+                    }
                 }
 
-                _state.value = UiState.Loading(str(R.string.getting_orbit), null)
+                if (!quiet) _state.value = UiState.Loading(str(R.string.getting_orbit), null)
                 val (tle0, eph) = ensureData(force)
 
-                _state.value = UiState.Loading(str(R.string.computing), 0f)
+                if (!quiet) _state.value = UiState.Loading(str(R.string.computing), 0f)
                 val transits = withContext(Dispatchers.Default) {
                     val finder = TransitFinder(tle0, eph, ISS_SIZE_M)
                     finder.search(
                         place.lat, place.lon, place.altitudeM, radius.toDouble(),
                         Transit.millisToJd(System.currentTimeMillis()), DAYS.toDouble()
                     ) { f ->
-                        _state.value = UiState.Loading(str(R.string.computing), f.toFloat())
+                        if (!quiet) _state.value = UiState.Loading(str(R.string.computing), f.toFloat())
                         isActive
                     }
                 }
@@ -351,10 +418,15 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 )
                 if (other) otherCache = ready else hereCache = ready
                 _state.value = ready
+                if (quiet) _toast.value = str(if (other) R.string.transits_recalculated else R.string.position_updated)
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (e: Exception) {
-                _state.value = UiState.Error(e.message ?: str(R.string.unexpected_error))
+                if (quiet) _toast.value = e.message ?: str(R.string.unexpected_error)
+                else _state.value = UiState.Error(e.message ?: str(R.string.unexpected_error))
+            } finally {
+                // um cálculo cancelado por outro mais recente não apaga o indicador desse
+                if (quiet && isCurrent()) _refreshing.value = false
             }
         }
     }

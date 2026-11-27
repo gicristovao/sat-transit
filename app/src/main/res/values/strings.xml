@@ -19,7 +19,7 @@
     <string name="n_hours">%d h</string>
     <string name="n_days">%d days</string>
     <string name="version_check">SatTransit %s · Check for updates</string>
-    <string name="location_line">GPS · %1$s · %2$d km radius · %3$d days</string>
+    <string name="location_line">GPS · %1$s · %2$s · %3$d km</string>
     <string name="visible_here">Visible here</string>
     <string name="seconds_1">%.1f s</string>
     <string name="seconds_2">%.2f s</string>
@@ -225,4 +225,13 @@
         <item>Spells of cloud</item><item>Fog</item><item>Cloudy</item><item>Snow showers</item>
         <item>Rain and snow</item><item>Rain and snow</item>
     </string-array>
+    <string name="fix_now">now</string>
+    <string name="fix_minutes">%d min ago</string>
+    <string name="fix_hours">%d h ago</string>
+    <string name="fix_days">%d d ago</string>
+    <string name="locating_now">Getting GPS position…</string>
+    <string name="pull_release">Release to update your position</string>
+    <string name="pull_release_other">Release to recalculate</string>
+    <string name="position_updated">Position updated · transits recalculated</string>
+    <string name="transits_recalculated">Transits recalculated</string>
 </resources>

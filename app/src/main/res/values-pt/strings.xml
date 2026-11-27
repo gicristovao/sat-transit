@@ -16,7 +16,7 @@
     <string name="n_hours">%d h</string>
     <string name="n_days">%d dias</string>
     <string name="version_check">SatTransit %s · Procurar atualizações</string>
-    <string name="location_line">GPS · %1$s · raio de %2$d km · %3$d dias</string>
+    <string name="location_line">GPS · %1$s · %2$s · %3$d km</string>
     <string name="visible_here">Visível daqui</string>
     <string name="seconds_1">%.1f s</string>
     <string name="seconds_2">%.2f s</string>
@@ -219,4 +219,13 @@
         <item>Períodos de muito nublado</item><item>Nevoeiro</item><item>Nublado</item><item>Aguaceiros de neve</item>
         <item>Chuva e neve</item><item>Chuva e neve</item>
     </string-array>
+    <string name="fix_now">agora</string>
+    <string name="fix_minutes">há %d min</string>
+    <string name="fix_hours">há %d h</string>
+    <string name="fix_days">há %d d</string>
+    <string name="locating_now">A obter posição GPS…</string>
+    <string name="pull_release">Larga para atualizar a posição</string>
+    <string name="pull_release_other">Larga para recalcular</string>
+    <string name="position_updated">Posição atualizada · trânsitos recalculados</string>
+    <string name="transits_recalculated">Trânsitos recalculados</string>
 </resources>

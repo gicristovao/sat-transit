@@ -14,21 +14,29 @@ import kotlinx.coroutines.withTimeoutOrNull
 import java.util.Locale
 import kotlin.coroutines.resume
 
-data class Place(val lat: Double, val lon: Double, val altitudeM: Double, val name: String?)
+data class Place(
+    val lat: Double, val lon: Double, val altitudeM: Double, val name: String?,
+    /** Hora (ms) da leitura GPS; null para locais escolhidos. */
+    val fixTimeMs: Long? = null,
+)
 
 class LocationProvider(private val context: Context) {
 
+    /**
+     * Posição atual. Com [fresh] = true (puxar para atualizar, regresso à app) ignora posições
+     * guardadas e pede uma leitura nova, primeiro ao GPS e depois à rede.
+     */
     @SuppressLint("MissingPermission")
-    suspend fun current(): Place? {
+    suspend fun current(fresh: Boolean = false): Place? {
         val lm = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
         val providers = listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER)
             .filter { runCatching { lm.isProviderEnabled(it) }.getOrDefault(false) }
         // Uma posição com menos de 10 min e precisão melhor que 500 m serve (a faixa de visibilidade tem vários km).
-        var loc: Location? = providers.mapNotNull { runCatching { lm.getLastKnownLocation(it) }.getOrNull() }
+        var loc: Location? = if (fresh) null else providers.mapNotNull { runCatching { lm.getLastKnownLocation(it) }.getOrNull() }
             .filter { System.currentTimeMillis() - it.time < 10 * 60_000 && it.hasAccuracy() && it.accuracy < 500f }
             .maxByOrNull { it.time }
         if (loc == null) for (p in providers) {
-            loc = withTimeoutOrNull(15_000) { fresh(lm, p) }
+            loc = withTimeoutOrNull(if (fresh && p == LocationManager.GPS_PROVIDER) 20_000 else 15_000) { readNow(lm, p) }
             if (loc != null) break
         }
         if (loc == null) {
@@ -37,7 +45,7 @@ class LocationProvider(private val context: Context) {
         }
         loc ?: return null
         val alt = if (loc.hasAltitude()) loc.altitude else 0.0
-        return Place(loc.latitude, loc.longitude, alt, placeName(loc.latitude, loc.longitude))
+        return Place(loc.latitude, loc.longitude, alt, placeName(loc.latitude, loc.longitude), loc.time)
     }
 
     /** Última posição conhecida, sem esperar pelo GPS (pode ser null). */
@@ -50,7 +58,7 @@ class LocationProvider(private val context: Context) {
     }
 
     @SuppressLint("MissingPermission")
-    private suspend fun fresh(lm: LocationManager, provider: String): Location? =
+    private suspend fun readNow(lm: LocationManager, provider: String): Location? =
         suspendCancellableCoroutine { cont ->
             val signal = CancellationSignal()
             cont.invokeOnCancellation { signal.cancel() }

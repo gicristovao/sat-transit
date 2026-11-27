@@ -34,6 +34,12 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
+import androidx.compose.runtime.produceState
+import androidx.compose.ui.draw.alpha
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -84,6 +90,7 @@ object C {
 }
 
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TransitListScreen(vm: MainViewModel, onRequestPermission: () -> Unit) {
     val state by vm.state.collectAsStateWithLifecycle()
@@ -95,6 +102,8 @@ fun TransitListScreen(vm: MainViewModel, onRequestPermission: () -> Unit) {
     var savedOnly by remember { mutableStateOf(false) }
     val savedRecords by vm.saved.collectAsStateWithLifecycle()
     val weather by vm.weather.collectAsStateWithLifecycle()
+    val refreshing by vm.refreshing.collectAsStateWithLifecycle()
+    val locating by vm.locating.collectAsStateWithLifecycle()
     var savedList by remember { mutableStateOf<List<Pair<pt.gicristovao.sattransit.data.SavedTransit, Transit>>?>(null) }
     var selectedPlace by remember { mutableStateOf<pt.gicristovao.sattransit.data.Place?>(null) }
     LaunchedEffect(savedOnly) {
@@ -169,7 +178,10 @@ fun TransitListScreen(vm: MainViewModel, onRequestPermission: () -> Unit) {
             is UiState.Error -> Message(s.message, stringResource(R.string.try_again)) { onRequestPermission() }
             is UiState.NeedPlace -> Message(stringResource(R.string.choose_place_prompt), stringResource(R.string.choose_place)) { showLocal = true }
             is UiState.Ready -> {
-                if (s.isGps) LocationRow(s) { radiusSheet = true } else OtherPlaceRow(s) { showLocal = true }
+                val pullState = rememberPullToRefreshState()
+                val pulling = !refreshing && pullState.distanceFraction > 0.3f
+                if (s.isGps) LocationRow(s, locating, pulling) { radiusSheet = true }
+                else OtherPlaceRow(s, pulling) { showLocal = true }
                 Spacer(Modifier.height(6.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
                     Chip(stringResource(R.string.filter_all), filter == null && !savedOnly) { filter = null; savedOnly = false }
@@ -180,10 +192,23 @@ fun TransitListScreen(vm: MainViewModel, onRequestPermission: () -> Unit) {
                 Spacer(Modifier.height(16.dp))
                 val list = if (savedOnly) savedList?.map { it.second } ?: emptyList()
                     else s.transits.filter { filter == null || it.body == filter }
+                PullToRefreshBox(
+                    isRefreshing = refreshing,
+                    onRefresh = { vm.pullRefresh() },
+                    state = pullState,
+                    modifier = Modifier.weight(1f),
+                    indicator = {
+                        PullToRefreshDefaults.Indicator(
+                            state = pullState, isRefreshing = refreshing,
+                            containerColor = C.Surface, color = C.Amber,
+                            modifier = Modifier.align(Alignment.TopCenter),
+                        )
+                    },
+                ) {
                 LazyColumn(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     contentPadding = PaddingValues(bottom = 24.dp),
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.fillMaxSize().alpha(if (refreshing) 0.45f else 1f)
                 ) {
                     if (savedOnly && list.isEmpty()) {
                         item {
@@ -241,6 +266,7 @@ fun TransitListScreen(vm: MainViewModel, onRequestPermission: () -> Unit) {
                             modifier = Modifier.fillMaxWidth().clickable { vm.checkUpdate(manual = true) }.padding(8.dp)
                         )
                     }
+                }
                 }
             }
         }
@@ -380,26 +406,49 @@ private fun formatHours(h: Double): String = when {
 }
 
 @Composable
-private fun LocationRow(s: UiState.Ready, onRadius: () -> Unit) {
+private fun LocationRow(s: UiState.Ready, locating: Boolean, pulling: Boolean, onRadius: () -> Unit) {
     val p = s.place
     val west = stringArrayResource(R.array.compass)[12]
     val coords = String.format(Locale.getDefault(), "%.3f° %s · %.3f° %s", abs(p.lat), if (p.lat >= 0) "N" else "S", abs(p.lon), if (p.lon >= 0) "E" else west)
+    // relógio para a idade da leitura ("há 3 h") se manter certa com a app aberta
+    val now by produceState(System.currentTimeMillis()) {
+        while (true) { kotlinx.coroutines.delay(30_000); value = System.currentTimeMillis() }
+    }
     Row(
-        Modifier.fillMaxWidth().heightIn(min = 44.dp).clip(RoundedCornerShape(12.dp)).border(1.dp, C.Line, RoundedCornerShape(12.dp))
+        Modifier.fillMaxWidth().heightIn(min = 44.dp).clip(RoundedCornerShape(12.dp))
+            .border(1.dp, if (locating || pulling) Color(0xFF5A4A20) else C.Line, RoundedCornerShape(12.dp))
             .clickable(onClick = onRadius).padding(horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Canvas(Modifier.size(18.dp)) {
-            val st = Stroke(width = 2.dp.toPx())
-            drawCircle(C.Moon, radius = size.minDimension * 0.16f, style = st)
-            drawCircle(C.Moon, radius = size.minDimension * 0.34f, style = st)
+        if (locating) {
+            androidx.compose.material3.CircularProgressIndicator(color = C.Amber, strokeWidth = 2.dp, modifier = Modifier.size(16.dp))
+        } else {
+            Canvas(Modifier.size(18.dp)) {
+                val st = Stroke(width = 2.dp.toPx())
+                drawCircle(C.Moon, radius = size.minDimension * 0.16f, style = st)
+                drawCircle(C.Moon, radius = size.minDimension * 0.34f, style = st)
+            }
         }
         Spacer(Modifier.size(8.dp))
         Text(
-            stringResource(R.string.location_line, p.name ?: coords, s.radiusKm, s.days),
+            if (locating) stringResource(R.string.locating_now)
+            else if (pulling) stringResource(R.string.pull_release)
+            else stringResource(R.string.location_line, p.name ?: coords, fixAge(p.fixTimeMs, now), s.radiusKm),
             color = C.Muted, fontSize = 14.sp, maxLines = 1, modifier = Modifier.weight(1f)
         )
         Text(stringResource(R.string.radius_btn), color = C.Amber, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+    }
+}
+
+/** Idade da leitura GPS: "agora", "há 12 min", "há 3 h", "há 2 d". */
+@Composable
+private fun fixAge(fixTimeMs: Long?, now: Long): String {
+    val min = ((now - (fixTimeMs ?: now)) / 60_000).coerceAtLeast(0)
+    return when {
+        min < 2 -> stringResource(R.string.fix_now)
+        min < 60 -> stringResource(R.string.fix_minutes, min.toInt())
+        min < 48 * 60 -> stringResource(R.string.fix_hours, (min / 60).toInt())
+        else -> stringResource(R.string.fix_days, (min / 1440).toInt())
     }
 }
 
@@ -431,7 +480,7 @@ private fun RadiusSheet(current: Int, onClose: () -> Unit, onApply: (Int) -> Uni
 }
 
 @Composable
-private fun OtherPlaceRow(s: UiState.Ready, onChange: () -> Unit) {
+private fun OtherPlaceRow(s: UiState.Ready, pulling: Boolean, onChange: () -> Unit) {
     Row(
         Modifier.fillMaxWidth().heightIn(min = 44.dp).clip(RoundedCornerShape(12.dp)).border(1.dp, C.Line, RoundedCornerShape(12.dp))
             .clickable(onClick = onChange).padding(horizontal = 12.dp),
@@ -444,7 +493,8 @@ private fun OtherPlaceRow(s: UiState.Ready, onChange: () -> Unit) {
         }
         Spacer(Modifier.size(8.dp))
         Text(
-            stringResource(R.string.other_line, (s.place.name ?: "").substringBefore(","), s.radiusKm, s.days),
+            if (pulling) stringResource(R.string.pull_release_other)
+            else stringResource(R.string.other_line, (s.place.name ?: "").substringBefore(","), s.radiusKm, s.days),
             color = C.Text, fontSize = 14.sp, maxLines = 1, modifier = Modifier.weight(1f)
         )
         Text(stringResource(R.string.change_place), color = C.Amber, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
