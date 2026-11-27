@@ -20,6 +20,8 @@ import pt.gicristovao.sattransit.data.SavedTransitStore
 import pt.gicristovao.sattransit.work.TransitCheck
 import pt.gicristovao.sattransit.data.TleRepository
 import pt.gicristovao.sattransit.data.Updater
+import pt.gicristovao.sattransit.data.weather.PlaceWeather
+import pt.gicristovao.sattransit.data.weather.WeatherRepository
 import java.io.File
 import kotlin.math.abs
 import pt.gicristovao.sattransit.engine.Ephemeris
@@ -123,6 +125,32 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
         _saved.value = savedStore.all()
         return out.sortedBy { it.first.lastTimeMs }
+    }
+
+    // ---- meteorologia ----
+    private val weatherRepo = WeatherRepository(app)
+    private val _weather = MutableStateFlow<Map<String, PlaceWeather>>(emptyMap())
+    /** Previsão por local (chave de [weatherKey]); um local ausente ainda está a carregar. */
+    val weather: StateFlow<Map<String, PlaceWeather>> = _weather
+    private val weatherLoading = HashSet<String>()
+
+    fun weatherKey(lat: Double, lon: Double): String = String.format(java.util.Locale.US, "%.3f,%.3f", lat, lon)
+
+    /** Vai buscar a previsão de um local, se ainda não houver ou tiver mais de 30 min. */
+    fun requestWeather(lat: Double, lon: Double) {
+        val k = weatherKey(lat, lon)
+        if (k in weatherLoading) return
+        val cur = _weather.value[k]
+        if (cur != null && System.currentTimeMillis() - cur.fetchedAt.toEpochMilli() < 30 * 60_000L) return
+        weatherLoading += k
+        viewModelScope.launch {
+            try {
+                val w = weatherRepo.load(lat, lon)
+                _weather.value = _weather.value + (k to w)
+            } finally {
+                weatherLoading -= k
+            }
+        }
     }
 
     private var hereCache: UiState.Ready? = null

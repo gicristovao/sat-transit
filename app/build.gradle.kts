@@ -67,4 +67,6 @@ dependencies {
     implementation("org.maplibre.gl:android-sdk:11.5.2")
     implementation("androidx.work:work-runtime-ktx:2.9.1")
     testImplementation("junit:junit:4.13.2")
+    // org.json verdadeiro nos testes (o do android.jar é só um esboço)
+    testImplementation("org.json:json:20240303")
 }

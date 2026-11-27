@@ -167,4 +167,56 @@
     <string name="gone_text">Com a órbita mais recente este trânsito deixou de acontecer.</string>
     <string name="saved_toast">Trânsito guardado. Vais ser avisado se mudar.</string>
     <string name="no_saved">Sem trânsitos guardados. Abre um trânsito e toca no marcador.</string>
+    <!-- Meteorologia -->
+    <string name="sky_title">Céu</string>
+    <string name="sky_at">Céu às %1$s</string>
+    <string name="sky_day">Céu em %1$s · dia todo</string>
+    <string name="sky_good">Bom</string>
+    <string name="sky_uncertain">Incerto</string>
+    <string name="sky_bad">Mau</string>
+    <string name="sky_indicative">Indicativo</string>
+    <string name="sky_rain">Precipitação %1$d%%</string>
+    <string name="sky_rain_day">Precipitação %1$d%% no dia</string>
+    <string name="sky_wind">vento %1$d km/h %2$s</string>
+    <string name="sky_covered">de céu coberto</string>
+    <string name="sky_layers_title">Nuvens (Open-Meteo)</string>
+    <string name="sky_high">Altas</string>
+    <string name="sky_mid">Médias</string>
+    <string name="sky_low">Baixas</string>
+    <string name="sky_hour">%1$dh</string>
+    <string name="sky_step_hourly">de hora a hora</string>
+    <string name="sky_step_3h">de 3 em 3 h</string>
+    <string name="sky_step_daily">diária</string>
+    <string name="sky_src_ipma">Previsão IPMA para %1$s (%2$d km) · %3$s · atualizada há %4$s</string>
+    <string name="sky_src_ipma_layers">Nuvens por camada: Open-Meteo</string>
+    <string name="sky_src_om">Previsão Open-Meteo para este ponto · de hora a hora · atualizada há %1$s</string>
+    <string name="sky_daily_both">Ainda não há previsão para a hora do trânsito. De 3 em 3 horas a partir de %1$s; hora a hora a partir de %2$s.</string>
+    <string name="sky_daily_3h">Ainda não há previsão para a hora do trânsito. De 3 em 3 horas a partir de %1$s.</string>
+    <string name="sky_daily_none">Ainda não há previsão para a hora do trânsito.</string>
+    <string name="sky_later">Previsão do céu a partir de %1$s.</string>
+    <string name="sky_later_card">Céu a partir de %1$s</string>
+    <string name="sky_none">Sem previsão do céu de momento (sem ligação?).</string>
+    <string name="sky_loading">A obter a previsão do céu…</string>
+    <string name="sky_card_day">%1$s · dia</string>
+    <string name="sky_card_om">%1$d%% nuvens</string>
+    <string-array name="ipma_types">
+        <item>—</item><item>Céu limpo</item><item>Céu pouco nublado</item><item>Céu parcialmente nublado</item><item>Céu muito nublado ou encoberto</item>
+        <item>Céu nublado por nuvens altas</item><item>Aguaceiros/chuva</item><item>Aguaceiros/chuva fracos</item><item>Aguaceiros/chuva fortes</item>
+        <item>Chuva/aguaceiros</item><item>Chuva fraca ou chuvisco</item><item>Chuva/aguaceiros forte</item><item>Períodos de chuva</item>
+        <item>Períodos de chuva fraca</item><item>Períodos de chuva forte</item><item>Chuvisco</item><item>Neblina</item>
+        <item>Nevoeiro ou nuvens baixas</item><item>Neve</item><item>Trovoada</item><item>Aguaceiros e possibilidade de trovoada</item>
+        <item>Granizo</item><item>Geada</item><item>Chuva e possibilidade de trovoada</item><item>Nebulosidade convectiva</item>
+        <item>Céu com períodos de muito nublado</item><item>Nevoeiro</item><item>Céu nublado</item><item>Aguaceiros de neve</item>
+        <item>Chuva e neve</item><item>Chuva e neve</item>
+    </string-array>
+    <string-array name="ipma_types_short">
+        <item>—</item><item>Limpo</item><item>Pouco nublado</item><item>Parcialmente nublado</item><item>Muito nublado</item>
+        <item>Nuvens altas</item><item>Aguaceiros</item><item>Aguaceiros fracos</item><item>Aguaceiros fortes</item>
+        <item>Chuva</item><item>Chuva fraca</item><item>Chuva forte</item><item>Períodos de chuva</item>
+        <item>Chuva fraca</item><item>Chuva forte</item><item>Chuvisco</item><item>Neblina</item>
+        <item>Nevoeiro</item><item>Neve</item><item>Trovoada</item><item>Aguaceiros, trovoada</item>
+        <item>Granizo</item><item>Geada</item><item>Chuva, trovoada</item><item>Nebulosidade convectiva</item>
+        <item>Períodos de muito nublado</item><item>Nevoeiro</item><item>Nublado</item><item>Aguaceiros de neve</item>
+        <item>Chuva e neve</item><item>Chuva e neve</item>
+    </string-array>
 </resources>

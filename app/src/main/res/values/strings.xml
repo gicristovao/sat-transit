@@ -173,4 +173,56 @@
     <string name="gone_text">With the latest orbit this transit no longer happens.</string>
     <string name="saved_toast">Transit saved. You\'ll be warned if it changes.</string>
     <string name="no_saved">No saved transits. Open a transit and tap the bookmark.</string>
+    <!-- Meteorologia -->
+    <string name="sky_title">Sky</string>
+    <string name="sky_at">Sky at %1$s</string>
+    <string name="sky_day">Sky on %1$s · all day</string>
+    <string name="sky_good">Good</string>
+    <string name="sky_uncertain">Uncertain</string>
+    <string name="sky_bad">Poor</string>
+    <string name="sky_indicative">Indicative</string>
+    <string name="sky_rain">Rain %1$d%%</string>
+    <string name="sky_rain_day">Rain %1$d%% for the day</string>
+    <string name="sky_wind">wind %1$d km/h %2$s</string>
+    <string name="sky_covered">of the sky covered</string>
+    <string name="sky_layers_title">Clouds (Open-Meteo)</string>
+    <string name="sky_high">High</string>
+    <string name="sky_mid">Mid</string>
+    <string name="sky_low">Low</string>
+    <string name="sky_hour">%1$dh</string>
+    <string name="sky_step_hourly">hourly</string>
+    <string name="sky_step_3h">every 3 h</string>
+    <string name="sky_step_daily">daily</string>
+    <string name="sky_src_ipma">IPMA forecast for %1$s (%2$d km) · %3$s · updated %4$s ago</string>
+    <string name="sky_src_ipma_layers">Clouds by layer: Open-Meteo</string>
+    <string name="sky_src_om">Open-Meteo forecast for this spot · hourly · updated %1$s ago</string>
+    <string name="sky_daily_both">No forecast yet for the time of the transit. Every 3 hours from %1$s; hourly from %2$s.</string>
+    <string name="sky_daily_3h">No forecast yet for the time of the transit. Every 3 hours from %1$s.</string>
+    <string name="sky_daily_none">No forecast yet for the time of the transit.</string>
+    <string name="sky_later">Sky forecast from %1$s.</string>
+    <string name="sky_later_card">Sky from %1$s</string>
+    <string name="sky_none">No sky forecast right now (no connection?).</string>
+    <string name="sky_loading">Getting the sky forecast…</string>
+    <string name="sky_card_day">%1$s · day</string>
+    <string name="sky_card_om">%1$d%% clouds</string>
+    <string-array name="ipma_types">
+        <item>—</item><item>Clear sky</item><item>Mostly clear</item><item>Partly cloudy</item><item>Overcast</item>
+        <item>High clouds</item><item>Showers/rain</item><item>Light showers/rain</item><item>Heavy showers/rain</item>
+        <item>Rain/showers</item><item>Light rain or drizzle</item><item>Heavy rain/showers</item><item>Intermittent rain</item>
+        <item>Intermittent light rain</item><item>Intermittent heavy rain</item><item>Drizzle</item><item>Mist</item>
+        <item>Fog or low clouds</item><item>Snow</item><item>Thunderstorms</item><item>Showers, possible thunderstorms</item>
+        <item>Hail</item><item>Frost</item><item>Rain, possible thunderstorms</item><item>Convective clouds</item>
+        <item>Periods of heavy cloud</item><item>Fog</item><item>Cloudy</item><item>Snow showers</item>
+        <item>Rain and snow</item><item>Rain and snow</item>
+    </string-array>
+    <string-array name="ipma_types_short">
+        <item>—</item><item>Clear</item><item>Mostly clear</item><item>Partly cloudy</item><item>Overcast</item>
+        <item>High clouds</item><item>Showers</item><item>Light showers</item><item>Heavy showers</item>
+        <item>Rain</item><item>Light rain</item><item>Heavy rain</item><item>Spells of rain</item>
+        <item>Light rain</item><item>Heavy rain</item><item>Drizzle</item><item>Mist</item>
+        <item>Fog / low clouds</item><item>Snow</item><item>Thunderstorms</item><item>Showers, storms</item>
+        <item>Hail</item><item>Frost</item><item>Rain, storms</item><item>Convective clouds</item>
+        <item>Spells of cloud</item><item>Fog</item><item>Cloudy</item><item>Snow showers</item>
+        <item>Rain and snow</item><item>Rain and snow</item>
+    </string-array>
 </resources>

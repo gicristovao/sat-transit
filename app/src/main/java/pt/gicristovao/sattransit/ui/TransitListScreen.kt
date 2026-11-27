@@ -94,6 +94,7 @@ fun TransitListScreen(vm: MainViewModel, onRequestPermission: () -> Unit) {
     var filter by remember { mutableStateOf<Ephemeris.Body?>(null) }
     var savedOnly by remember { mutableStateOf(false) }
     val savedRecords by vm.saved.collectAsStateWithLifecycle()
+    val weather by vm.weather.collectAsStateWithLifecycle()
     var savedList by remember { mutableStateOf<List<Pair<pt.gicristovao.sattransit.data.SavedTransit, Transit>>?>(null) }
     var selectedPlace by remember { mutableStateOf<pt.gicristovao.sattransit.data.Place?>(null) }
     LaunchedEffect(savedOnly) {
@@ -117,11 +118,15 @@ fun TransitListScreen(vm: MainViewModel, onRequestPermission: () -> Unit) {
     if (sel != null && ready != null) {
         val place = selectedPlace ?: ready.place
         val isGps = selectedPlace == null && ready.isGps
+        LaunchedEffect(place.lat, place.lon) { vm.requestWeather(place.lat, place.lon) }
+        val pw = weather[vm.weatherKey(place.lat, place.lon)]
+        val sky = remember(pw, sel) { pw?.at(java.time.Instant.ofEpochMilli(Transit.jdToMillis(sel.jdObserver))) }
         TransitDetailScreen(
             sel, place, isGps, { la, lo -> vm.evaluateAt(sel, la, lo) },
             saved = savedRecords.firstOrNull { it.matches(sel) },
             tleEpochMillis = vm.tleEpochMillis,
             onToggleSave = { la, lo -> vm.toggleSave(sel, la, lo, place.name ?: "") },
+            sky = sky,
         ) { selected = null; selectedPlace = null }
         return
     }
@@ -210,7 +215,13 @@ fun TransitListScreen(vm: MainViewModel, onRequestPermission: () -> Unit) {
                     }
                     items(list) { t ->
                         val rec = savedRecords.firstOrNull { it.matches(t) }
-                        TransitCard(t, saved = rec != null) {
+                        // previsão do céu: local da lista, ou o local guardado no filtro "Guardados"
+                        val wLat = if (savedOnly && rec != null) rec.lat else s.place.lat
+                        val wLon = if (savedOnly && rec != null) rec.lon else s.place.lon
+                        LaunchedEffect(wLat, wLon) { vm.requestWeather(wLat, wLon) }
+                        val pw = weather[vm.weatherKey(wLat, wLon)]
+                        val sky = remember(pw, t) { pw?.at(java.time.Instant.ofEpochMilli(Transit.jdToMillis(t.jdObserver))) }
+                        TransitCard(t, saved = rec != null, sky = sky) {
                             selected = t
                             selectedPlace = if (savedOnly && rec != null) pt.gicristovao.sattransit.data.Place(rec.lat, rec.lon, 0.0, rec.placeName) else null
                         }
@@ -479,7 +490,7 @@ private fun Chip(label: String, selected: Boolean, icon: (@Composable () -> Unit
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun TransitCard(t: Transit, saved: Boolean = false, onClick: () -> Unit) {
+private fun TransitCard(t: Transit, saved: Boolean = false, sky: pt.gicristovao.sattransit.data.weather.SkyResult? = null, onClick: () -> Unit) {
     val visible = t.visibleFromObserver()
     val date = Date(Transit.jdToMillis(t.jdObserver))
     val day = SimpleDateFormat("EEE, d MMM", Locale.getDefault()).format(date).replace(".", "")
@@ -517,6 +528,7 @@ private fun TransitCard(t: Transit, saved: Boolean = false, onClick: () -> Unit)
                 Meta(stringResource(R.string.seconds_1, dur))
                 if (!visible) Meta(stringResource(R.string.km_from_band, t.distanceToBandKm()))
             }
+            SkyLine(sky, night = !sun)
         }
         SkyThumbnail(t)
     }

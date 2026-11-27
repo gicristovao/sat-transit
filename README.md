@@ -16,6 +16,7 @@ Formato `MAIOR.MENOR.CORREÇÃO`, por exemplo 0.3.0, 0.3.1, 0.4.0.
 ## Estrutura
 
 - `app/src/main/java/.../engine/` — motor de cálculo (Java puro, sem dependências): SGP4, efemérides do Sol e da Lua, linha central, duração e largura da faixa.
+- `app/src/main/java/.../data/weather/` — previsão do céu: IPMA (Portugal) e Open-Meteo.
 - `app/src/main/java/.../ui/` — interface (Jetpack Compose).
 - `app/src/main/assets/ephem_sun_moon.bin` — posições do Sol e da Lua de hora a hora (2026-11 a 2030-12), geradas com `tools/gen_ephemeris.py` a partir do JPL DE421.
 - `app/src/test/` — testes do motor contra as previsões de referência (Skyfield e transit-finder.com).
@@ -25,3 +26,4 @@ Formato `MAIOR.MENOR.CORREÇÃO`, por exemplo 0.3.0, 0.3.1, 0.4.0.
 
 - Órbitas: CelesTrak (com cópia em cache; no máximo um download a cada 2 h), com a ARISS como alternativa para a ISS.
 - Sol e Lua: calculados no telemóvel, sem rede.
+- Céu: em Portugal, IPMA (localidade de previsão mais próxima, ficheiros do ipma.pt) com as % de nuvens por camada do Open-Meteo; fora de Portugal, só Open-Meteo. Até 10 dias antes do trânsito. Os dados do Open-Meteo são CC BY 4.0 e a API gratuita é só para uso não comercial.

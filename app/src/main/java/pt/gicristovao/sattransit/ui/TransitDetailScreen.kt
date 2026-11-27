@@ -78,6 +78,8 @@ fun TransitDetailScreen(
     saved: SavedTransit? = null,
     tleEpochMillis: Long? = null,
     onToggleSave: (lat: Double, lon: Double) -> Boolean = { _, _ -> false },
+    /** Previsão do céu para o local e a hora do trânsito; null = a carregar. */
+    sky: pt.gicristovao.sattransit.data.weather.SkyResult? = null,
     onBack: () -> Unit,
 ) {
     BackHandler(onBack = onBack)
@@ -185,6 +187,8 @@ fun TransitDetailScreen(
                 color = C.Muted, fontSize = 13.sp, lineHeight = 18.sp
             )
         }
+
+        SkyBox(sky, night = !sun)
 
         ConfidenceBox(t, tleEpochMillis)
         if (saved != null && saved.changed) ChangedBox(saved)
