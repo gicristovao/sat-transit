@@ -140,4 +140,6 @@
     <string name="increase_radius">Increase radius</string>
     <string name="radius_here_note">Only for \"Where I am\". \"Other place\" has its own radius.</string>
     <string name="apply">Apply</string>
+    <string name="choose_place_prompt">Choose a place to see its transits.</string>
+    <string name="choose_place">Choose place</string>
 </resources>

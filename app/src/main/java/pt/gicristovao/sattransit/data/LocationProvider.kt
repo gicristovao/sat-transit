@@ -40,6 +40,15 @@ class LocationProvider(private val context: Context) {
         return Place(loc.latitude, loc.longitude, alt, placeName(loc.latitude, loc.longitude))
     }
 
+    /** Última posição conhecida, sem esperar pelo GPS (pode ser null). */
+    @SuppressLint("MissingPermission")
+    fun lastKnown(): Location? {
+        val lm = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+        return listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER)
+            .mapNotNull { runCatching { lm.getLastKnownLocation(it) }.getOrNull() }
+            .maxByOrNull { it.time }
+    }
+
     @SuppressLint("MissingPermission")
     private suspend fun fresh(lm: LocationManager, provider: String): Location? =
         suspendCancellableCoroutine { cont ->

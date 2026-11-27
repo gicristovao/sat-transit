@@ -129,6 +129,13 @@ fun LocalScreen(vm: MainViewModel, onBack: () -> Unit, onDone: () -> Unit) {
         busy = false
     }
 
+    // sugestões enquanto se escreve (a partir de 3 caracteres)
+    LaunchedEffect(query) {
+        if (query.trim().length < 3) { results = null; return@LaunchedEffect }
+        delay(400)
+        results = vm.placeSearch.search(query)
+    }
+
     fun runSearch() {
         focus.clearFocus()
         scope.launch { results = vm.placeSearch.search(query) }
@@ -167,7 +174,7 @@ fun LocalScreen(vm: MainViewModel, onBack: () -> Unit, onDone: () -> Unit) {
             Box(Modifier.weight(1f).padding(start = 10.dp)) {
                 if (query.isEmpty()) Text(stringResource(R.string.search_place), color = C.Faint, fontSize = 15.sp)
                 BasicTextField(
-                    value = query, onValueChange = { query = it; results = null }, singleLine = true,
+                    value = query, onValueChange = { query = it }, singleLine = true,
                     textStyle = TextStyle(color = C.Text, fontSize = 15.sp), cursorBrush = SolidColor(C.Amber),
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                     keyboardActions = KeyboardActions(onSearch = { runSearch() }),
@@ -210,7 +217,7 @@ fun LocalScreen(vm: MainViewModel, onBack: () -> Unit, onDone: () -> Unit) {
                         Text(
                             p.name, color = C.Text, fontSize = 15.sp,
                             modifier = Modifier.fillMaxWidth().clickable {
-                                pin = p; recenter++; results = null; query = ""
+                                pin = p; recenter++; query = ""; results = null; focus.clearFocus()
                             }.padding(horizontal = 14.dp, vertical = 12.dp)
                         )
                     }

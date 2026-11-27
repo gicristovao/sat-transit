@@ -24,6 +24,8 @@ import pt.gicristovao.sattransit.engine.TransitFinder
 
 sealed interface UiState {
     data object NeedPermission : UiState
+    /** Outro local ainda sem local escolhido. */
+    data object NeedPlace : UiState
     data class Loading(val message: String, val progress: Float?) : UiState
     data class Ready(
         val place: Place,
@@ -79,10 +81,56 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         refresh()
     }
 
+    private var hereCache: UiState.Ready? = null
+    private var otherCache: UiState.Ready? = null
+
+    /** Volta a "Onde estou": mostra logo o último resultado e só recalcula se algo mudou. */
     fun useHere() {
         if (!_otherMode.value) return
         _otherMode.value = false
-        refresh()
+        showCachedOrRefresh(hereCache)
+    }
+
+    /**
+     * Separador "Outro local": mostra o último resultado desta sessão, se houver.
+     * Devolve false quando ainda não há local escolhido (a interface abre a escolha).
+     */
+    fun selectOther(): Boolean {
+        _otherMode.value = true
+        val c = otherCache
+        if (c == null) {
+            job?.cancel()
+            _state.value = UiState.NeedPlace
+            return false
+        }
+        showCachedOrRefresh(c)
+        return true
+    }
+
+    private fun showCachedOrRefresh(c: UiState.Ready?) {
+        job?.cancel()
+        if (c == null) { refresh(); return }
+        _state.value = c
+        job = viewModelScope.launch {
+            val stale = runCatching { isStale(c) }.getOrDefault(false)
+            if (stale && _state.value === c) refresh()
+        }
+    }
+
+    /** O resultado guardado deixou de servir? (órbita nova, mudança de posição > 1 km ou raio diferente) */
+    private suspend fun isStale(c: UiState.Ready): Boolean {
+        val tle = tleRepo.get(ISS, false).tle
+        if (Transit.jdToMillis(tle.epochJd) != c.tleEpochMillis) return true
+        return if (c.isGps) {
+            if (c.radiusKm != places.radiusHere) return true
+            val loc = locations.lastKnown() ?: return false
+            val d = FloatArray(1)
+            android.location.Location.distanceBetween(loc.latitude, loc.longitude, c.place.lat, c.place.lon, d)
+            d[0] > 1000f
+        } else {
+            val ch = _chosen.value
+            c.radiusKm != places.radiusOther || ch == null || ch.lat != c.place.lat || ch.lon != c.place.lon
+        }
     }
 
     /** Passa a mostrar os trânsitos de um local escolhido, com o raio indicado. */
@@ -95,7 +143,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private suspend fun ensureData(force: Boolean): Pair<pt.gicristovao.sattransit.engine.Tle, Ephemeris> {
-        val tle = if (lastTle == null || force) tleRepo.get(ISS, force).tle.also { lastTle = it } else lastTle!!
+        val tle = tleRepo.get(ISS, force).tle.also { lastTle = it }
         val eph = ephemeris ?: withContext(Dispatchers.IO) {
             getApplication<Application>().assets.open("ephem_sun_moon.bin").use { Ephemeris(it) }
         }.also { ephemeris = it }
@@ -203,6 +251,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             try {
                 val other = _otherMode.value
                 val chosenPlace = _chosen.value
+                if (other && chosenPlace == null) { _state.value = UiState.NeedPlace; return@launch }
                 val radius = if (other && chosenPlace != null) places.radiusOther else places.radiusHere
                 val place = if (other && chosenPlace != null) {
                     Place(chosenPlace.lat, chosenPlace.lon, 0.0, chosenPlace.name)
@@ -225,9 +274,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                         isActive
                     }
                 }
-                _state.value = UiState.Ready(
-                    place, transits, Transit.jdToMillis(tle0.epochJd), radius, DAYS, isGps = !(other && chosenPlace != null)
+                val ready = UiState.Ready(
+                    place, transits, Transit.jdToMillis(tle0.epochJd), radius, DAYS, isGps = !other
                 )
+                if (other) otherCache = ready else hereCache = ready
+                _state.value = ready
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             } catch (e: Exception) {

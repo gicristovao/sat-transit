@@ -126,7 +126,7 @@ fun TransitListScreen(vm: MainViewModel, onRequestPermission: () -> Unit) {
         UpdateBanner(update) { vm.openSheet() }
         Segmented(left = stringResource(R.string.where_i_am), right = stringResource(R.string.other_place), rightSelected = otherPlace) { other ->
             if (!other) vm.useHere()
-            else chosen?.let { vm.useOther(it, vm.places.radiusOther) } ?: run { showLocal = true }
+            else if (!vm.selectOther()) showLocal = true
         }
         Spacer(Modifier.height(8.dp))
 
@@ -145,6 +145,7 @@ fun TransitListScreen(vm: MainViewModel, onRequestPermission: () -> Unit) {
                 }
             }
             is UiState.Error -> Message(s.message, stringResource(R.string.try_again)) { onRequestPermission() }
+            is UiState.NeedPlace -> Message(stringResource(R.string.choose_place_prompt), stringResource(R.string.choose_place)) { showLocal = true }
             is UiState.Ready -> {
                 if (s.isGps) LocationRow(s) { radiusSheet = true } else OtherPlaceRow(s) { showLocal = true }
                 Spacer(Modifier.height(6.dp))

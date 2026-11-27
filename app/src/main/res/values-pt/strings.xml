@@ -134,4 +134,6 @@
     <string name="increase_radius">Aumentar o raio</string>
     <string name="radius_here_note">Só para \"Onde estou\". O \"Outro local\" tem o seu próprio raio.</string>
     <string name="apply">Aplicar</string>
+    <string name="choose_place_prompt">Escolhe um local para ver os trânsitos.</string>
+    <string name="choose_place">Escolher local</string>
 </resources>
