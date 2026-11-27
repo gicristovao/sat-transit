@@ -80,7 +80,7 @@ object Sky {
             }
         }
         if (om != null) {
-            val v = if (Duration.between(now, at) > OM_INDICATIVE_AFTER) SkyVerdict.INDICATIVE else verdictOm(om.layers, om.rainPct)
+            val v = if (Duration.between(now, at) > OM_INDICATIVE_AFTER) SkyVerdict.INDICATIVE else om.verdict
             return SkyResult.Ready(om.copy(verdict = v, updated = w.fetchedAt))
         }
         return SkyResult.Unavailable
